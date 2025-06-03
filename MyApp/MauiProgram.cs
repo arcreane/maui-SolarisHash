@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using MyApp.Services;
 
 namespace MyApp
 {
@@ -14,6 +15,9 @@ namespace MyApp
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
+
+            // Enregistrement du service HTTP client
+            builder.Services.AddHttpClient<IPlaceService, FoursquarePlaceService>();
 
 #if DEBUG
     		builder.Logging.AddDebug();
