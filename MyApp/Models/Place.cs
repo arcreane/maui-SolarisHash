@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace MyApp.Models
@@ -6,36 +8,161 @@ namespace MyApp.Models
     public class Place
     {
         [JsonProperty("id")]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         [JsonProperty("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [JsonProperty("location")]
-        public PlaceLocation Location { get; set; }
+        public PlaceLocation Location { get; set; } = new PlaceLocation();
 
         [JsonProperty("categories")]
-        public List<PlaceCategory> Categories { get; set; }
+        public List<PlaceCategory> Categories { get; set; } = new List<PlaceCategory>();
 
         [JsonProperty("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         [JsonProperty("distance")]
         public int Distance { get; set; }
 
-        public string FormattedDistance => $"{Distance}m";
+        // Nouvelles propriétés pour OSM
+        public string Tourism { get; set; } = string.Empty;
+        public string Amenity { get; set; } = string.Empty;
+        public string Historic { get; set; } = string.Empty;
+        public string Leisure { get; set; } = string.Empty;
+        public string Shop { get; set; } = string.Empty;
+        public string Website { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string OpeningHours { get; set; } = string.Empty;
+        public Dictionary<string, string> OsmTags { get; set; } = new Dictionary<string, string>();
 
-        public string MainCategory => Categories?.FirstOrDefault()?.Name ?? "Lieu";
+        // Propriétés calculées
+        public string FormattedDistance => Distance < 1000 
+            ? $"{Distance}m" 
+            : $"{Distance / 1000.0:F1}km";
 
-        public string Address => Location?.FormattedAddress ?? "Adresse inconnue";
+        public string MainCategory => Categories?.FirstOrDefault()?.Name ?? DetermineMainCategory();
 
-        public string PhotoUrl { get; set; }
+        public string Address => Location?.FormattedAddress ?? Location?.Address ?? "Adresse inconnue";
+
+        public string PhotoUrl { get; set; } = string.Empty;
+
+        // Méthode pour créer un Place à partir d'un OsmElement
+        public static Place FromOsmElement(OsmElement osmElement, double userLat, double userLon)
+        {
+            var place = new Place
+            {
+                Id = osmElement.Id.ToString(),
+                Name = osmElement.Name,
+                Description = osmElement.Description,
+                Tourism = osmElement.Tourism ?? string.Empty,
+                Amenity = osmElement.Amenity ?? string.Empty,
+                Historic = osmElement.Historic ?? string.Empty,
+                Leisure = osmElement.Leisure ?? string.Empty,
+                Shop = osmElement.Shop ?? string.Empty,
+                Website = osmElement.Website ?? string.Empty,
+                Phone = osmElement.Phone ?? string.Empty,
+                OpeningHours = osmElement.OpeningHours ?? string.Empty,
+                OsmTags = osmElement.Tags ?? new Dictionary<string, string>()
+            };
+
+            // Localisation
+            if (osmElement.Latitude.HasValue && osmElement.Longitude.HasValue)
+            {
+                place.Location = new PlaceLocation
+                {
+                    Latitude = osmElement.Latitude.Value,
+                    Longitude = osmElement.Longitude.Value,
+                    Address = osmElement.Address,
+                    FormattedAddress = osmElement.Address,
+                    City = osmElement.Tags.ContainsKey("addr:city") ? osmElement.Tags["addr:city"] : "",
+                    Country = osmElement.Tags.ContainsKey("addr:country") ? osmElement.Tags["addr:country"] : "France"
+                };
+
+                place.Distance = CalculateDistance(userLat, userLon, osmElement.Latitude.Value, osmElement.Longitude.Value);
+            }
+            else if (osmElement.Geometry?.Any() == true)
+            {
+                var firstPoint = osmElement.Geometry.First();
+                place.Location = new PlaceLocation
+                {
+                    Latitude = firstPoint.Latitude,
+                    Longitude = firstPoint.Longitude,
+                    Address = osmElement.Address,
+                    FormattedAddress = osmElement.Address,
+                    City = osmElement.Tags.ContainsKey("addr:city") ? osmElement.Tags["addr:city"] : "",
+                    Country = osmElement.Tags.ContainsKey("addr:country") ? osmElement.Tags["addr:country"] : "France"
+                };
+
+                place.Distance = CalculateDistance(userLat, userLon, firstPoint.Latitude, firstPoint.Longitude);
+            }
+
+            // Catégories
+            place.Categories.Add(new PlaceCategory
+            {
+                Id = osmElement.MainCategory.ToLower().Replace(" ", "_"),
+                Name = osmElement.MainCategory
+            });
+
+            // URL de photo générique basée sur la catégorie
+            place.PhotoUrl = GetCategoryPhotoUrl(osmElement.MainCategory);
+
+            return place;
+        }
+
+        private string DetermineMainCategory()
+        {
+            if (!string.IsNullOrEmpty(Tourism)) return "Tourisme";
+            if (!string.IsNullOrEmpty(Amenity)) return "Service";
+            if (!string.IsNullOrEmpty(Historic)) return "Monument";
+            if (!string.IsNullOrEmpty(Leisure)) return "Loisirs";
+            if (!string.IsNullOrEmpty(Shop)) return "Commerce";
+            return "Lieu d'intérêt";
+        }
+
+        private static int CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double earthRadius = 6371; // Rayon de la Terre en km
+
+            var dLat = ToRadians(lat2 - lat1);
+            var dLon = ToRadians(lon2 - lon1);
+
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            var distance = earthRadius * c;
+
+            return (int)(distance * 1000); // Retourner en mètres
+        }
+
+        private static double ToRadians(double degrees)
+        {
+            return degrees * Math.PI / 180;
+        }
+
+        private static string GetCategoryPhotoUrl(string category)
+        {
+            return category.ToLower() switch
+            {
+                var c when c.Contains("restaurant") => "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+                var c when c.Contains("café") => "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400",
+                var c when c.Contains("musée") => "https://images.unsplash.com/photo-1566139975810-0373b16ffa79?w=400",
+                var c when c.Contains("monument") => "https://images.unsplash.com/photo-1539650116574-75c0c6930311?w=400",
+                var c when c.Contains("parc") => "https://images.unsplash.com/photo-1524721696987-b9527df9e512?w=400",
+                var c when c.Contains("église") => "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+                var c when c.Contains("hôtel") => "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400",
+                var c when c.Contains("commerce") => "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400",
+                _ => "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400"
+            };
+        }
     }
 
     public class PlaceLocation
     {
         [JsonProperty("address")]
-        public string Address { get; set; }
+        public string Address { get; set; } = string.Empty;
 
         [JsonProperty("lat")]
         public double Latitude { get; set; }
@@ -44,34 +171,34 @@ namespace MyApp.Models
         public double Longitude { get; set; }
 
         [JsonProperty("formattedAddress")]
-        public string FormattedAddress { get; set; }
+        public string FormattedAddress { get; set; } = string.Empty;
 
         [JsonProperty("country")]
-        public string Country { get; set; }
+        public string Country { get; set; } = string.Empty;
 
         [JsonProperty("city")]
-        public string City { get; set; }
+        public string City { get; set; } = string.Empty;
     }
 
     public class PlaceCategory
     {
         [JsonProperty("id")]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         [JsonProperty("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [JsonProperty("icon")]
-        public CategoryIcon Icon { get; set; }
+        public CategoryIcon? Icon { get; set; }
     }
 
     public class CategoryIcon
     {
         [JsonProperty("prefix")]
-        public string Prefix { get; set; }
+        public string Prefix { get; set; } = string.Empty;
 
         [JsonProperty("suffix")]
-        public string Suffix { get; set; }
+        public string Suffix { get; set; } = string.Empty;
 
         public string GetIconUrl(int size = 64)
         {

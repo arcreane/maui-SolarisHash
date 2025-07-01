@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Devices.Sensors;
@@ -19,7 +18,7 @@ namespace MyApp.ViewModels
         private bool isLocationEnabled;
 
         [ObservableProperty]
-        private string currentLocation = "Localisation en cours...";
+        private string currentLocation = "📍 Localisation en cours...";
 
         [ObservableProperty]
         private string searchQuery = string.Empty;
@@ -27,10 +26,13 @@ namespace MyApp.ViewModels
         [ObservableProperty]
         private string selectedFilter = "Tous";
 
+        [ObservableProperty]
+        private string statusMessage = "Prêt à chercher des lieux...";
+
         public ObservableCollection<Place> Places { get; } = new();
         public ObservableCollection<string> FilterOptions { get; } = new()
         {
-            "Tous", "Restaurants", "Monuments", "Musées", "Parcs", "Hôtels"
+            "Tous", "Tourisme", "Restaurants", "Monuments", "Musées", "Parcs", "Services", "Commerce"
         };
 
         private Location _currentLocationCoords;
@@ -48,17 +50,22 @@ namespace MyApp.ViewModels
             try
             {
                 IsLoading = true;
+                StatusMessage = "🔍 Recherche en cours...";
                 
                 // Obtenir la localisation
                 await GetCurrentLocationAsync();
                 
                 if (_currentLocationCoords != null)
                 {
-                    // Récupérer les lieux proches
+                    StatusMessage = "🌐 Interrogation d'OpenStreetMap...";
+                    
+                    // Récupérer les lieux proches via Overpass API
                     var places = await _placeService.GetNearbyPlacesAsync(
                         _currentLocationCoords.Latitude,
                         _currentLocationCoords.Longitude,
-                        string.IsNullOrWhiteSpace(SearchQuery) ? null : SearchQuery
+                        string.IsNullOrWhiteSpace(SearchQuery) ? null : SearchQuery,
+                        radius: 1000, // 1km
+                        limit: 50
                     );
 
                     // Filtrer selon le filtre sélectionné
@@ -66,17 +73,24 @@ namespace MyApp.ViewModels
 
                     // Mettre à jour la collection
                     Places.Clear();
-                    foreach (var place in filteredPlaces)
+                    foreach (var place in filteredPlaces.Take(20)) // Limiter à 20 pour l'affichage
                     {
                         Places.Add(place);
                     }
+
+                    StatusMessage = $"✅ {Places.Count} lieux trouvés";
+                }
+                else
+                {
+                    StatusMessage = "❌ Impossible d'obtenir votre position";
                 }
             }
             catch (Exception ex)
             {
+                StatusMessage = $"❌ Erreur: {ex.Message}";
                 await Application.Current.MainPage.DisplayAlert(
                     "Erreur", 
-                    $"Impossible de charger les lieux : {ex.Message}", 
+                    $"Impossible de charger les lieux:\n{ex.Message}", 
                     "OK"
                 );
             }
@@ -89,6 +103,7 @@ namespace MyApp.ViewModels
         [RelayCommand]
         private async Task SearchPlacesAsync()
         {
+            StatusMessage = "🔍 Recherche avec filtre...";
             await LoadPlacesAsync();
         }
 
@@ -97,6 +112,7 @@ namespace MyApp.ViewModels
         {
             if (Places.Any())
             {
+                StatusMessage = $"🔽 Filtrage par: {SelectedFilter}";
                 await LoadPlacesAsync();
             }
         }
@@ -104,6 +120,7 @@ namespace MyApp.ViewModels
         [RelayCommand]
         private async Task RefreshLocationAsync()
         {
+            StatusMessage = "📍 Actualisation de la position...";
             await GetCurrentLocationAsync();
             await LoadPlacesAsync();
         }
@@ -113,12 +130,27 @@ namespace MyApp.ViewModels
         {
             if (selectedPlace != null)
             {
+                var details = new List<string>();
+                
+                if (!string.IsNullOrEmpty(selectedPlace.Description))
+                    details.Add($"📝 {selectedPlace.Description}");
+                
+                details.Add($"📍 {selectedPlace.Address}");
+                details.Add($"📏 Distance: {selectedPlace.FormattedDistance}");
+                details.Add($"🏷️ Catégorie: {selectedPlace.MainCategory}");
+                
+                if (!string.IsNullOrEmpty(selectedPlace.Phone))
+                    details.Add($"📞 {selectedPlace.Phone}");
+                
+                if (!string.IsNullOrEmpty(selectedPlace.Website))
+                    details.Add($"🌐 {selectedPlace.Website}");
+                
+                if (!string.IsNullOrEmpty(selectedPlace.OpeningHours))
+                    details.Add($"🕐 {selectedPlace.OpeningHours}");
+
                 await Application.Current.MainPage.DisplayAlert(
                     selectedPlace.Name,
-                    $"{selectedPlace.Description ?? "Aucune description disponible"}\n\n" +
-                    $"📍 {selectedPlace.Address}\n" +
-                    $"📏 Distance: {selectedPlace.FormattedDistance}\n" +
-                    $"🏷️ Catégorie: {selectedPlace.MainCategory}",
+                    string.Join("\n\n", details),
                     "OK"
                 );
             }
@@ -128,6 +160,15 @@ namespace MyApp.ViewModels
         {
             try
             {
+                // Vérifier les permissions
+                var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+                if (status != PermissionStatus.Granted)
+                {
+                    CurrentLocation = "❌ Permission de localisation refusée";
+                    IsLocationEnabled = false;
+                    return;
+                }
+
                 var location = await Geolocation.GetLocationAsync(new GeolocationRequest
                 {
                     DesiredAccuracy = GeolocationAccuracy.Medium,
@@ -146,9 +187,24 @@ namespace MyApp.ViewModels
                     IsLocationEnabled = false;
                 }
             }
+            catch (FeatureNotSupportedException)
+            {
+                CurrentLocation = "❌ Géolocalisation non supportée";
+                IsLocationEnabled = false;
+            }
+            catch (FeatureNotEnabledException)
+            {
+                CurrentLocation = "❌ Géolocalisation désactivée";
+                IsLocationEnabled = false;
+            }
+            catch (PermissionException)
+            {
+                CurrentLocation = "❌ Permission de géolocalisation refusée";
+                IsLocationEnabled = false;
+            }
             catch (Exception ex)
             {
-                CurrentLocation = $"❌ Erreur de localisation: {ex.Message}";
+                CurrentLocation = $"❌ Erreur: {ex.Message}";
                 IsLocationEnabled = false;
             }
         }
@@ -159,20 +215,33 @@ namespace MyApp.ViewModels
                 return places;
 
             return places.Where(p => 
-                p.MainCategory.Contains(SelectedFilter, StringComparison.OrdinalIgnoreCase) ||
-                p.Categories?.Any(c => c.Name.Contains(SelectedFilter, StringComparison.OrdinalIgnoreCase)) == true
-            ).ToList();
+            {
+                var category = p.MainCategory.ToLower();
+                var filter = SelectedFilter.ToLower();
+                
+                return filter switch
+                {
+                    "tourisme" => !string.IsNullOrEmpty(p.Tourism) || category.Contains("tourisme") || category.Contains("attraction"),
+                    "restaurants" => !string.IsNullOrEmpty(p.Amenity) && (p.Amenity.Contains("restaurant") || p.Amenity.Contains("cafe") || p.Amenity.Contains("bar")),
+                    "monuments" => !string.IsNullOrEmpty(p.Historic) || category.Contains("monument") || category.Contains("historique"),
+                    "musées" => category.Contains("musée") || (!string.IsNullOrEmpty(p.Tourism) && p.Tourism.Contains("museum")),
+                    "parcs" => category.Contains("parc") || category.Contains("jardin") || (!string.IsNullOrEmpty(p.Leisure) && (p.Leisure.Contains("park") || p.Leisure.Contains("garden"))),
+                    "services" => !string.IsNullOrEmpty(p.Amenity) && !p.Amenity.Contains("restaurant") && !p.Amenity.Contains("cafe"),
+                    "commerce" => !string.IsNullOrEmpty(p.Shop) || category.Contains("commerce"),
+                    _ => category.Contains(filter)
+                };
+            }).ToList();
         }
 
+        // Recherche avec délai pour éviter trop d'appels
         partial void OnSearchQueryChanged(string value)
         {
-            // Déclencher une recherche après un délai pour éviter trop d'appels
             Task.Run(async () =>
             {
-                await Task.Delay(500); // Délai de 500ms
-                if (SearchQuery == value) // Vérifier que la valeur n'a pas changé
+                await Task.Delay(800); // Délai de 800ms
+                if (SearchQuery == value && !IsLoading) // Vérifier que la valeur n'a pas changé
                 {
-                    await SearchPlacesAsync();
+                    MainThread.BeginInvokeOnMainThread(async () => await SearchPlacesAsync());
                 }
             });
         }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using MyApp.Services;
+using MyApp.ViewModels;
 
 namespace MyApp
 {
@@ -16,11 +17,15 @@ namespace MyApp
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Enregistrement du service HTTP client
-            builder.Services.AddHttpClient<IPlaceService, FoursquarePlaceService>();
+            // Enregistrement du HttpClient et du service Overpass
+            builder.Services.AddSingleton<HttpClient>();
+            builder.Services.AddSingleton<IPlaceService, OverpassService>();
+            
+            // Enregistrement des ViewModels
+            builder.Services.AddTransient<MainPageViewModel>();
 
 #if DEBUG
-    		builder.Logging.AddDebug();
+            builder.Logging.AddDebug();
 #endif
 
             return builder.Build();
