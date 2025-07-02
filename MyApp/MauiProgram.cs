@@ -17,12 +17,14 @@ namespace MyApp
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Enregistrement du HttpClient et du service Overpass
+            // Enregistrement des services
             builder.Services.AddSingleton<HttpClient>();
             builder.Services.AddSingleton<IPlaceService, OverpassService>();
+            builder.Services.AddSingleton<ICompassService, CompassService>();
             
-            // Enregistrement des ViewModels
+            // Enregistrement des ViewModels et Pages
             builder.Services.AddTransient<MainPageViewModel>();
+            builder.Services.AddTransient<MainPage>();
 
 #if DEBUG
             builder.Logging.AddDebug();
