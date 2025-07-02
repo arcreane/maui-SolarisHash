@@ -4,9 +4,16 @@
              xmlns:views="clr-namespace:MyApp.Views"
              xmlns:viewmodels="clr-namespace:MyApp.ViewModels"
              xmlns:models="clr-namespace:MyApp.Models"
+             xmlns:local="clr-namespace:MyApp.Converters"
              x:Class="MyApp.MainPage"
              x:DataType="viewmodels:MainPageViewModel"
              Title="TravelBuddy">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <local:CategoryToEmojiConverter x:Key="CategoryToEmojiConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <Grid>
         <ScrollView>
@@ -32,21 +39,64 @@
                     </StackLayout>
                 </Frame>
 
-                <!-- Statut de localisation -->
+                <!-- Statut de localisation avec sélecteur de ville -->
                 <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2E}"
                        BorderColor="{AppThemeBinding Light=#E5E5E7, Dark=#48484A}"
                        CornerRadius="12"
                        Padding="16"
                        HasShadow="True">
-                    <StackLayout Orientation="Horizontal" Spacing="12">
-                        <Label Text="{Binding CurrentLocation}" 
-                               FontSize="14" 
-                               VerticalOptions="Center"
-                               HorizontalOptions="FillAndExpand" />
-                        <Button Text="🔄" 
-                                FontSize="16"
-                                BackgroundColor="Transparent"
-                                Command="{Binding RefreshLocationCommand}" />
+                    <StackLayout Spacing="12">
+                        <!-- Position actuelle -->
+                        <StackLayout Orientation="Horizontal" Spacing="12">
+                            <Label Text="{Binding CurrentLocation}" 
+                                   FontSize="14" 
+                                   VerticalOptions="Center"
+                                   HorizontalOptions="FillAndExpand" />
+                            <Button Text="🔄" 
+                                    FontSize="16"
+                                    BackgroundColor="Transparent"
+                                    Command="{Binding RefreshLocationCommand}" />
+                        </StackLayout>
+                        
+                        <!-- Sélecteur de ville -->
+                        <StackLayout Orientation="Horizontal" Spacing="8">
+                            <Label Text="🏙️" FontSize="16" VerticalOptions="Center" />
+                            <Entry Placeholder="Tapez le nom d'une ville française..."
+                                   Text="{Binding SelectedCityName}"
+                                   FontSize="14"
+                                   HorizontalOptions="FillAndExpand" />
+                            <Button Text="📍" 
+                                    FontSize="16"
+                                    BackgroundColor="{AppThemeBinding Light=#007AFF, Dark=#0A84FF}"
+                                    TextColor="White"
+                                    CornerRadius="6"
+                                    Padding="8"
+                                    Command="{Binding GoToCityCommand}" />
+                        </StackLayout>
+                        
+                        <!-- Villes rapides -->
+                        <Label Text="Villes populaires :" FontSize="12" TextColor="Gray" />
+                        <CollectionView ItemsSource="{Binding PopularCities}"
+                                        SelectionMode="Single"
+                                        SelectionChangedCommand="{Binding CitySelectedCommand}">
+                            <CollectionView.ItemsLayout>
+                                <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8" />
+                            </CollectionView.ItemsLayout>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Frame BackgroundColor="{AppThemeBinding Light=#F2F2F7, Dark=#3A3A3C}"
+                                           BorderColor="{AppThemeBinding Light=#D1D1D6, Dark=#48484A}"
+                                           CornerRadius="16"
+                                           Padding="12,6"
+                                           HasShadow="False">
+                                        <Label Text="{Binding}" 
+                                               FontSize="12"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center" />
+                                    </Frame>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
                     </StackLayout>
                 </Frame>
 
@@ -73,7 +123,7 @@
                 </Frame>
 
                 <!-- Bouton de recherche principal -->
-                <Button Text="🔍 Chercher des lieux" 
+                 <Button Text="🔍 Chercher des lieux" 
                         Command="{Binding LoadPlacesCommand}"
                         BackgroundColor="{AppThemeBinding Light=#34C759, Dark=#30D158}"
                         TextColor="White"
@@ -116,18 +166,18 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Image du lieu -->
+                                        <!-- Image du lieu avec émoji selon catégorie -->
                                         <Frame Grid.Row="0" 
                                                Grid.Column="0" 
                                                Grid.RowSpan="2"
                                                CornerRadius="8" 
-                                               Padding="0" 
+                                               Padding="8" 
                                                HasShadow="False"
                                                BackgroundColor="{AppThemeBinding Light=#F2F2F7, Dark=#3A3A3C}">
-                                            <Image Source="{Binding PhotoUrl}" 
-                                                   Aspect="AspectFill" 
-                                                   HeightRequest="50" 
-                                                   WidthRequest="50" />
+                                            <Label Text="{Binding MainCategory, Converter={StaticResource CategoryToEmojiConverter}}"
+                                                   FontSize="24"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
                                         </Frame>
 
                                         <!-- Nom et catégorie -->
@@ -165,14 +215,6 @@
                                            FontSize="12" 
                                            LineBreakMode="WordWrap"
                                            MaxLines="2" />
-
-                                    <!-- Téléphone -->
-                                    <StackLayout Orientation="Horizontal" Spacing="8">
-                                        <Label Text="📞" FontSize="12" />
-                                        <Label Text="{Binding Phone}" 
-                                               FontSize="12" 
-                                               TextColor="{AppThemeBinding Light=#007AFF, Dark=#0A84FF}" />
-                                    </StackLayout>
 
                                 </StackLayout>
                             </Frame>

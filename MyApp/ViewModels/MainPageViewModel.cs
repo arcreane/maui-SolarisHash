@@ -10,6 +10,7 @@ namespace MyApp.ViewModels
     public partial class MainPageViewModel : ObservableObject
     {
         private readonly IPlaceService _placeService;
+        private readonly ILocationService _locationService;
 
         [ObservableProperty]
         private bool isLoading;
@@ -29,17 +30,32 @@ namespace MyApp.ViewModels
         [ObservableProperty]
         private string statusMessage = "Prêt à chercher des lieux...";
 
+        [ObservableProperty]
+        private string selectedCityName = string.Empty;
+
         public ObservableCollection<Place> Places { get; } = new();
         public ObservableCollection<string> FilterOptions { get; } = new()
         {
             "Tous", "Tourisme", "Restaurants", "Monuments", "Musées", "Parcs", "Services", "Commerce"
         };
 
-        private Location _currentLocationCoords;
+        public ObservableCollection<string> PopularCities { get; } = new()
+        {
+            "Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Nantes", "Montpellier", "Strasbourg", "Bordeaux", "Lille"
+        };
 
-        public MainPageViewModel(IPlaceService placeService)
+        private Location? _currentLocationCoords;
+
+        public MainPageViewModel(IPlaceService placeService, ILocationService locationService)
         {
             _placeService = placeService;
+            _locationService = locationService;
+            
+            // S'abonner aux changements de localisation
+            _locationService.LocationChanged += OnLocationChanged;
+            
+            Console.WriteLine($"🔍 Service utilisé: {_placeService.GetType().Name}");
+            Console.WriteLine($"📍 Service de localisation: {_locationService.GetType().Name}");
         }
 
         [RelayCommand]
@@ -52,42 +68,54 @@ namespace MyApp.ViewModels
                 IsLoading = true;
                 StatusMessage = "🔍 Recherche en cours...";
                 
-                // Obtenir la localisation
+                Console.WriteLine("🚀 Début de LoadPlacesAsync");
+                
+                // Obtenir la localisation intelligente
                 await GetCurrentLocationAsync();
                 
                 if (_currentLocationCoords != null)
                 {
-                    StatusMessage = "🌐 Interrogation d'OpenStreetMap...";
+                    Console.WriteLine($"📍 Position actuelle: {_currentLocationCoords.Latitude:F6}, {_currentLocationCoords.Longitude:F6}");
                     
-                    // Récupérer les lieux proches via Overpass API
+                    StatusMessage = "🌐 Recherche de lieux...";
+                    
                     var places = await _placeService.GetNearbyPlacesAsync(
                         _currentLocationCoords.Latitude,
                         _currentLocationCoords.Longitude,
                         string.IsNullOrWhiteSpace(SearchQuery) ? null : SearchQuery,
-                        radius: 1000, // 1km
+                        radius: 2000,
                         limit: 50
                     );
 
-                    // Filtrer selon le filtre sélectionné
-                    var filteredPlaces = ApplyFilter(places);
+                    Console.WriteLine($"🏠 Lieux trouvés avant filtrage: {places.Count}");
+                    foreach (var place in places.Take(3))
+                    {
+                        Console.WriteLine($"   - {place.Name} ({place.Distance}m) - {place.MainCategory}");
+                    }
 
-                    // Mettre à jour la collection
+                    var filteredPlaces = ApplyFilter(places);
+                    Console.WriteLine($"🔽 Lieux après filtrage '{SelectedFilter}': {filteredPlaces.Count}");
+
                     Places.Clear();
-                    foreach (var place in filteredPlaces.Take(20)) // Limiter à 20 pour l'affichage
+                    foreach (var place in filteredPlaces.Take(20))
                     {
                         Places.Add(place);
                     }
 
                     StatusMessage = $"✅ {Places.Count} lieux trouvés";
+                    Console.WriteLine($"✅ Places.Count final: {Places.Count}");
                 }
                 else
                 {
                     StatusMessage = "❌ Impossible d'obtenir votre position";
+                    Console.WriteLine("❌ _currentLocationCoords est null");
                 }
             }
             catch (Exception ex)
             {
                 StatusMessage = $"❌ Erreur: {ex.Message}";
+                Console.WriteLine($"💥 Erreur dans LoadPlacesAsync: {ex.Message}");
+                
                 await Application.Current.MainPage.DisplayAlert(
                     "Erreur", 
                     $"Impossible de charger les lieux:\n{ex.Message}", 
@@ -101,8 +129,64 @@ namespace MyApp.ViewModels
         }
 
         [RelayCommand]
+        private async Task GoToCityAsync()
+        {
+            if (string.IsNullOrWhiteSpace(SelectedCityName))
+                return;
+
+            try
+            {
+                IsLoading = true;
+                StatusMessage = $"🏙️ Recherche de {SelectedCityName}...";
+                
+                Console.WriteLine($"🏙️ Recherche de la ville: {SelectedCityName}");
+                
+                var location = await _locationService.GetLocationByNameAsync(SelectedCityName);
+                
+                if (location != null)
+                {
+                    _currentLocationCoords = location;
+                    CurrentLocation = $"🏙️ {SelectedCityName} ({location.Latitude:F4}, {location.Longitude:F4})";
+                    IsLocationEnabled = true;
+                    
+                    // Rechercher les lieux dans cette ville
+                    await LoadPlacesAsync();
+                }
+                else
+                {
+                    StatusMessage = $"❌ Ville '{SelectedCityName}' non trouvée";
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Ville non trouvée", 
+                        $"Impossible de trouver '{SelectedCityName}'.\nEssayez: Paris, Lyon, Marseille, etc.", 
+                        "OK"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"❌ Erreur recherche ville: {ex.Message}";
+                Console.WriteLine($"❌ Erreur GoToCityAsync: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task CitySelectedAsync(object selectedItem)
+        {
+            if (selectedItem is string cityName)
+            {
+                SelectedCityName = cityName;
+                await GoToCityAsync();
+            }
+        }
+
+        [RelayCommand]
         private async Task SearchPlacesAsync()
         {
+            Console.WriteLine($"🔍 Recherche avec query: '{SearchQuery}'");
             StatusMessage = "🔍 Recherche avec filtre...";
             await LoadPlacesAsync();
         }
@@ -110,6 +194,7 @@ namespace MyApp.ViewModels
         [RelayCommand]
         private async Task FilterChangedAsync()
         {
+            Console.WriteLine($"🔽 Filtre changé vers: '{SelectedFilter}'");
             if (Places.Any())
             {
                 StatusMessage = $"🔽 Filtrage par: {SelectedFilter}";
@@ -120,7 +205,9 @@ namespace MyApp.ViewModels
         [RelayCommand]
         private async Task RefreshLocationAsync()
         {
+            Console.WriteLine("🔄 Actualisation de la position demandée");
             StatusMessage = "📍 Actualisation de la position...";
+            _currentLocationCoords = null;
             await GetCurrentLocationAsync();
             await LoadPlacesAsync();
         }
@@ -130,6 +217,8 @@ namespace MyApp.ViewModels
         {
             if (selectedPlace != null)
             {
+                Console.WriteLine($"📍 Lieu sélectionné: {selectedPlace.Name}");
+                
                 var details = new List<string>();
                 
                 if (!string.IsNullOrEmpty(selectedPlace.Description))
@@ -160,53 +249,43 @@ namespace MyApp.ViewModels
         {
             try
             {
-                // Vérifier les permissions
-                var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-                if (status != PermissionStatus.Granted)
-                {
-                    CurrentLocation = "❌ Permission de localisation refusée";
-                    IsLocationEnabled = false;
-                    return;
-                }
-
-                var location = await Geolocation.GetLocationAsync(new GeolocationRequest
-                {
-                    DesiredAccuracy = GeolocationAccuracy.Medium,
-                    Timeout = TimeSpan.FromSeconds(10)
-                });
-
+                Console.WriteLine("📍 Début de géolocalisation intelligente...");
+                
+                var location = await _locationService.GetCurrentLocationAsync();
+                
                 if (location != null)
                 {
                     _currentLocationCoords = location;
-                    CurrentLocation = $"📍 {location.Latitude:F4}, {location.Longitude:F4}";
+                    CurrentLocation = $"📍 {location.Latitude:F6}, {location.Longitude:F6}";
                     IsLocationEnabled = true;
+                    
+                    Console.WriteLine($"✅ Position obtenue: {location.Latitude:F6}, {location.Longitude:F6}");
                 }
                 else
                 {
                     CurrentLocation = "❌ Localisation indisponible";
                     IsLocationEnabled = false;
+                    Console.WriteLine("❌ Location est null");
                 }
-            }
-            catch (FeatureNotSupportedException)
-            {
-                CurrentLocation = "❌ Géolocalisation non supportée";
-                IsLocationEnabled = false;
-            }
-            catch (FeatureNotEnabledException)
-            {
-                CurrentLocation = "❌ Géolocalisation désactivée";
-                IsLocationEnabled = false;
-            }
-            catch (PermissionException)
-            {
-                CurrentLocation = "❌ Permission de géolocalisation refusée";
-                IsLocationEnabled = false;
             }
             catch (Exception ex)
             {
                 CurrentLocation = $"❌ Erreur: {ex.Message}";
                 IsLocationEnabled = false;
+                Console.WriteLine($"❌ Exception géolocalisation: {ex.Message}");
             }
+        }
+
+        private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                _currentLocationCoords = e.NewLocation;
+                CurrentLocation = $"📍 {e.NewLocation.Latitude:F6}, {e.NewLocation.Longitude:F6} ({e.Source})";
+                IsLocationEnabled = true;
+                
+                Console.WriteLine($"📍 Localisation mise à jour: {e.NewLocation.Latitude:F6}, {e.NewLocation.Longitude:F6} via {e.Source}");
+            });
         }
 
         private List<Place> ApplyFilter(List<Place> places)
@@ -214,7 +293,7 @@ namespace MyApp.ViewModels
             if (SelectedFilter == "Tous" || string.IsNullOrEmpty(SelectedFilter))
                 return places;
 
-            return places.Where(p => 
+            var filtered = places.Where(p => 
             {
                 var category = p.MainCategory.ToLower();
                 var filter = SelectedFilter.ToLower();
@@ -231,19 +310,38 @@ namespace MyApp.ViewModels
                     _ => category.Contains(filter)
                 };
             }).ToList();
+            
+            Console.WriteLine($"🔽 Filtrage '{SelectedFilter}': {places.Count} -> {filtered.Count}");
+            return filtered;
         }
 
         // Recherche avec délai pour éviter trop d'appels
         partial void OnSearchQueryChanged(string value)
         {
+            Console.WriteLine($"🔤 SearchQuery changé: '{value}'");
             Task.Run(async () =>
             {
-                await Task.Delay(800); // Délai de 800ms
-                if (SearchQuery == value && !IsLoading) // Vérifier que la valeur n'a pas changé
+                await Task.Delay(800);
+                if (SearchQuery == value && !IsLoading)
                 {
                     MainThread.BeginInvokeOnMainThread(async () => await SearchPlacesAsync());
                 }
             });
+        }
+
+        // Nettoyer les événements
+        protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            base.OnPropertyChanged(e);
+        }
+
+        // Méthode pour nettoyer les ressources
+        public void Dispose()
+        {
+            if (_locationService != null)
+            {
+                _locationService.LocationChanged -= OnLocationChanged;
+            }
         }
     }
 }

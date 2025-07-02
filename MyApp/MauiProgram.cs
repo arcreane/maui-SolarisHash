@@ -17,12 +17,17 @@ namespace MyApp
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Enregistrement des services
+            // Services HTTP et API
             builder.Services.AddSingleton<HttpClient>();
-            builder.Services.AddSingleton<IPlaceService, OverpassService>();
+            
+            // Services de lieux - Service hybride (API réelle + fallback)
+            builder.Services.AddSingleton<IPlaceService, HybridPlaceService>();
+            
+            // Services de localisation
+            builder.Services.AddSingleton<ILocationService, SmartLocationService>();
             builder.Services.AddSingleton<ICompassService, CompassService>();
             
-            // Enregistrement des ViewModels et Pages
+            // ViewModels et Pages
             builder.Services.AddTransient<MainPageViewModel>();
             builder.Services.AddTransient<MainPage>();
 
