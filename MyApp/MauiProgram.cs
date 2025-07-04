@@ -19,10 +19,22 @@ namespace MyApp
                 });
 
             // Services HTTP et API
-            builder.Services.AddSingleton<HttpClient>();
+            builder.Services.AddSingleton<HttpClient>(serviceProvider =>
+            {
+                var httpClient = new HttpClient();
+                
+                // Configuration optimisée pour les vraies données
+                httpClient.Timeout = TimeSpan.FromSeconds(60);
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "TravelBuddy/1.0 (Real Data App)");
+                
+                return httpClient;
+            });
             
-            // Services de lieux - Service hybride (API réelle + fallback)
-            builder.Services.AddSingleton<IPlaceService, HybridPlaceService>();
+            // ⭐ CHANGEMENT PRINCIPAL: Service avec VRAIES données uniquement
+            builder.Services.AddSingleton<IPlaceService, RealDataOnlyService>();
+            
+            // Alternative si vous voulez garder l'hybride mais sans données fictives:
+            // builder.Services.AddSingleton<IPlaceService, OverpassService>();
             
             // Services de localisation et capteurs (ordre important)
             builder.Services.AddSingleton<ILocationService, SmartLocationService>();
@@ -42,6 +54,10 @@ namespace MyApp
 #if DEBUG
             builder.Logging.AddDebug();
             builder.Logging.SetMinimumLevel(LogLevel.Debug);
+            
+            // Log pour confirmer la configuration
+            Console.WriteLine("🌍 TravelBuddy configuré avec VRAIES DONNÉES UNIQUEMENT (OpenStreetMap)");
+            Console.WriteLine("📍 Aucune donnée fictive ou de démonstration ne sera utilisée");
 #endif
 
             return builder.Build();

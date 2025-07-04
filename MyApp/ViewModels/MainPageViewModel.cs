@@ -107,24 +107,28 @@ namespace MyApp.ViewModels
                 
                 System.Diagnostics.Debug.WriteLine("🚀 Début de LoadPlacesAsync");
                 
-                // Obtenir la localisation intelligente
-                await GetCurrentLocationAsync();
+                // CORRECTION: Vérifier d'abord si on a déjà une position définie
+                if (_currentLocationCoords == null)
+                {
+                    await GetCurrentLocationAsync();
+                }
                 
                 if (_currentLocationCoords != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"📍 Position actuelle: {_currentLocationCoords.Latitude:F6}, {_currentLocationCoords.Longitude:F6}");
+                    System.Diagnostics.Debug.WriteLine($"📍 Position utilisée pour recherche: {_currentLocationCoords.Latitude:F6}, {_currentLocationCoords.Longitude:F6}");
                     
-                    StatusMessage = "🌐 Recherche de lieux...";
+                    StatusMessage = "🌐 Recherche de lieux réels...";
                     
+                    // CORRECTION: Augmenter la limite pour avoir plus de résultats
                     var places = await _placeService.GetNearbyPlacesAsync(
                         _currentLocationCoords.Latitude,
                         _currentLocationCoords.Longitude,
                         string.IsNullOrWhiteSpace(SearchQuery) ? null : SearchQuery,
-                        radius: 2000,
-                        limit: 50
+                        radius: 3000, // Augmenté à 3km
+                        limit: 100    // Augmenté à 100 pour avoir plus de choix
                     );
 
-                    System.Diagnostics.Debug.WriteLine($"🏠 Lieux trouvés: {places.Count}");
+                    System.Diagnostics.Debug.WriteLine($"🏠 Lieux trouvés depuis API: {places.Count}");
                     
                     // Stocker tous les lieux
                     _allPlaces = places;
@@ -133,13 +137,24 @@ namespace MyApp.ViewModels
                     var filteredPlaces = ApplyAllFilters(_allPlaces);
 
                     Places.Clear();
-                    foreach (var place in filteredPlaces.Take(20))
+                    
+                    // CORRECTION: Afficher plus de lieux (50 au lieu de 20)
+                    foreach (var place in filteredPlaces.Take(50))
                     {
                         Places.Add(place);
                     }
 
-                    StatusMessage = $"✅ {Places.Count} lieux trouvés";
-                    System.Diagnostics.Debug.WriteLine($"✅ Places.Count final: {Places.Count}");
+                    // CORRECTION: Message plus informatif
+                    if (Places.Any())
+                    {
+                        StatusMessage = $"✅ {Places.Count} lieux trouvés près de {GetLocationName()}";
+                        System.Diagnostics.Debug.WriteLine($"✅ Places.Count final: {Places.Count}");
+                    }
+                    else
+                    {
+                        StatusMessage = $"⚠️ Aucun lieu trouvé près de {GetLocationName()} (rayon 3km)";
+                        System.Diagnostics.Debug.WriteLine("⚠️ Aucun lieu après filtrage");
+                    }
                 }
                 else
                 {
@@ -168,51 +183,6 @@ namespace MyApp.ViewModels
         }
 
         [RelayCommand]
-        private async Task ToggleOrientationFilterAsync()
-        {
-            if (_orientationService == null)
-            {
-                StatusMessage = "❌ Service d'orientation non disponible";
-                return;
-            }
-
-            try
-            {
-                IsOrientationFilterEnabled = !IsOrientationFilterEnabled;
-                
-                if (IsOrientationFilterEnabled)
-                {
-                    await _orientationService.StartAsync();
-                    StatusMessage = "🧭 Filtrage par orientation activé - Pointez votre téléphone !";
-                    System.Diagnostics.Debug.WriteLine("🧭 Service d'orientation démarré");
-                }
-                else
-                {
-                    await _orientationService.StopAsync();
-                    StatusMessage = "🧭 Filtrage par orientation désactivé";
-                    System.Diagnostics.Debug.WriteLine("🛑 Service d'orientation arrêté");
-                }
-                
-                // Reappliquer les filtres
-                await RefreshPlacesAsync();
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"❌ Erreur orientation: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"❌ Erreur ToggleOrientationFilter: {ex.Message}");
-                
-                if (Application.Current?.MainPage != null)
-                {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "Erreur capteurs", 
-                        $"Impossible d'activer l'orientation:\n{ex.Message}", 
-                        "OK"
-                    );
-                }
-            }
-        }
-
-        [RelayCommand]
         private async Task GoToCityAsync()
         {
             if (string.IsNullOrWhiteSpace(SelectedCityName))
@@ -223,19 +193,32 @@ namespace MyApp.ViewModels
                 IsLoading = true;
                 StatusMessage = $"🏙️ Recherche de {SelectedCityName}...";
                 
+                System.Diagnostics.Debug.WriteLine($"🏙️ Recherche ville: {SelectedCityName}");
+                
                 var location = await _locationService.GetLocationByNameAsync(SelectedCityName);
                 
                 if (location != null)
                 {
+                    // CORRECTION: Bien définir la nouvelle position
                     _currentLocationCoords = location;
                     CurrentLocation = $"🏙️ {SelectedCityName} ({location.Latitude:F4}, {location.Longitude:F4})";
                     IsLocationEnabled = true;
                     
-                    await LoadPlacesAsync();
+                    System.Diagnostics.Debug.WriteLine($"✅ Coordonnées trouvées pour {SelectedCityName}: {location.Latitude:F6}, {location.Longitude:F6}");
+                    
+                    // CORRECTION: Vider les anciens résultats avant la nouvelle recherche
+                    Places.Clear();
+                    _allPlaces.Clear();
+                    
+                    StatusMessage = $"📍 Position mise à jour pour {SelectedCityName}";
+                    
+                    // NE PAS lancer automatiquement LoadPlacesAsync ici
+                    // L'utilisateur devra cliquer sur le bouton "Chercher des lieux"
                 }
                 else
                 {
                     StatusMessage = $"❌ Ville '{SelectedCityName}' non trouvée";
+                    System.Diagnostics.Debug.WriteLine($"❌ Ville non trouvée: {SelectedCityName}");
                 }
             }
             catch (Exception ex)
@@ -283,9 +266,59 @@ namespace MyApp.ViewModels
         {
             System.Diagnostics.Debug.WriteLine("🔄 Actualisation de la position demandée");
             StatusMessage = "📍 Actualisation de la position...";
+            
+            // CORRECTION: Réinitialiser complètement la position
             _currentLocationCoords = null;
+            Places.Clear();
+            _allPlaces.Clear();
+            SelectedCityName = string.Empty;
+            
             await GetCurrentLocationAsync();
-            await LoadPlacesAsync();
+        }
+
+        [RelayCommand]
+        private async Task ToggleOrientationFilterAsync()
+        {
+            if (_orientationService == null)
+            {
+                StatusMessage = "❌ Service d'orientation non disponible";
+                return;
+            }
+
+            try
+            {
+                IsOrientationFilterEnabled = !IsOrientationFilterEnabled;
+                
+                if (IsOrientationFilterEnabled)
+                {
+                    await _orientationService.StartAsync();
+                    StatusMessage = "🧭 Filtrage par orientation activé - Pointez votre téléphone !";
+                    System.Diagnostics.Debug.WriteLine("🧭 Service d'orientation démarré");
+                }
+                else
+                {
+                    await _orientationService.StopAsync();
+                    StatusMessage = "🧭 Filtrage par orientation désactivé";
+                    System.Diagnostics.Debug.WriteLine("🛑 Service d'orientation arrêté");
+                }
+                
+                // Reappliquer les filtres
+                await RefreshPlacesAsync();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"❌ Erreur orientation: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur ToggleOrientationFilter: {ex.Message}");
+                
+                if (Application.Current?.MainPage != null)
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Erreur capteurs", 
+                        $"Impossible d'activer l'orientation:\n{ex.Message}", 
+                        "OK"
+                    );
+                }
+            }
         }
 
         [RelayCommand]
@@ -351,12 +384,12 @@ namespace MyApp.ViewModels
                 var filteredPlaces = ApplyAllFilters(_allPlaces);
                 
                 Places.Clear();
-                foreach (var place in filteredPlaces.Take(20))
+                foreach (var place in filteredPlaces.Take(50)) // Augmenté à 50
                 {
                     Places.Add(place);
                 }
                 
-                StatusMessage = $"✅ {Places.Count} lieux trouvés";
+                StatusMessage = $"✅ {Places.Count} lieux trouvés près de {GetLocationName()}";
             }
             await Task.CompletedTask;
         }
@@ -432,6 +465,17 @@ namespace MyApp.ViewModels
             }).ToList();
             
             return filtered;
+        }
+
+        private string GetLocationName()
+        {
+            if (!string.IsNullOrEmpty(SelectedCityName))
+                return SelectedCityName;
+            
+            if (_currentLocationCoords != null)
+                return $"coordonnées actuelles";
+            
+            return "position inconnue";
         }
 
         public void Dispose()
