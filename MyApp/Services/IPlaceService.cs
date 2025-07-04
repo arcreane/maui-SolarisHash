@@ -15,13 +15,13 @@ namespace MyApp.Services
         /// <param name="radius">Rayon de recherche en mètres (par défaut 1000m)</param>
         /// <param name="limit">Nombre maximum de résultats (par défaut 20)</param>
         /// <returns>Liste des lieux trouvés</returns>
-        Task<List<Place>> GetNearbyPlacesAsync(double latitude, double longitude, string query = null, int radius = 1000, int limit = 20);
+        Task<List<Place>> GetNearbyPlacesAsync(double latitude, double longitude, string? query = null, int radius = 1000, int limit = 20);
         
         /// <summary>
         /// Obtient les détails d'un lieu spécifique
         /// </summary>
         /// <param name="placeId">Identifiant du lieu</param>
-        /// <returns>Détails du lieu</returns>
-        Task<Place> GetPlaceDetailsAsync(string placeId);
+        /// <returns>Détails du lieu ou null si non trouvé</returns>
+        Task<Place?> GetPlaceDetailsAsync(string placeId);
     }
 }

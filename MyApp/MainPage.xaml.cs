@@ -20,5 +20,13 @@ namespace MyApp
                 await _viewModel.FilterChangedCommand.ExecuteAsync(null);
             }
         }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            
+            // Nettoyer les ressources quand la page disparaît
+            _viewModel?.Dispose();
+        }
     }
 }

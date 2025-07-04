@@ -12,6 +12,10 @@
     <ContentPage.Resources>
         <ResourceDictionary>
             <local:CategoryToEmojiConverter x:Key="CategoryToEmojiConverter" />
+            <local:IsNotNullConverter x:Key="IsNotNullConverter" />
+            <local:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+            <local:BoolToTextConverter x:Key="BoolToTextConverter" />
+            <local:BoolToColorConverter x:Key="BoolToColorConverter" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -100,7 +104,31 @@
                     </StackLayout>
                 </Frame>
 
+                <!-- Contrôles d'orientation -->
+                <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2E}"
+                       BorderColor="{AppThemeBinding Light=#E5E5E7, Dark=#48484A}"
+                       CornerRadius="12"
+                       Padding="16"
+                       HasShadow="True">
+                    <StackLayout Spacing="12">
+                        <Label Text="📱 Filtrage par orientation" FontSize="16" FontAttributes="Bold" />
+                        <Label Text="{Binding CurrentOrientation}" FontSize="12" TextColor="Gray" />
+                        <Label Text="Pointez votre téléphone vers une direction pour filtrer les lieux !" 
+                               FontSize="11" 
+                               TextColor="Orange"
+                               IsVisible="{Binding IsOrientationFilterEnabled}" />
+                        <Button Text="{Binding IsOrientationFilterEnabled, Converter={StaticResource BoolToTextConverter}}"
+                                Command="{Binding ToggleOrientationFilterCommand}"
+                                BackgroundColor="{Binding IsOrientationFilterEnabled, Converter={StaticResource BoolToColorConverter}}"
+                                TextColor="White"
+                                CornerRadius="8" />
+                    </StackLayout>
+                </Frame>
+
                 <views:CompassView />
+
+                <!-- Carte des lieux -->
+                <views:MapView Places="{Binding Places}" />
 
                 <!-- Barre de recherche -->
                 <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2E}"
@@ -141,7 +169,8 @@
                 <!-- Liste des lieux -->
                 <Label Text="Lieux trouvés" 
                        FontSize="20" 
-                       FontAttributes="Bold" />
+                       FontAttributes="Bold" 
+                       IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}" />
 
                 <CollectionView ItemsSource="{Binding Places}"
                                 SelectionMode="Single"
@@ -166,7 +195,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Image du lieu avec émoji selon catégorie -->
+                                        <!-- Emoji du lieu selon catégorie -->
                                         <Frame Grid.Row="0" 
                                                Grid.Column="0" 
                                                Grid.RowSpan="2"
@@ -214,7 +243,8 @@
                                     <Label Text="{Binding Description}" 
                                            FontSize="12" 
                                            LineBreakMode="WordWrap"
-                                           MaxLines="2" />
+                                           MaxLines="2" 
+                                           IsVisible="{Binding Description, Converter={StaticResource IsNotNullConverter}}" />
 
                                 </StackLayout>
                             </Frame>
@@ -223,7 +253,7 @@
                 </CollectionView>
 
                 <!-- Message si aucun lieu trouvé -->
-                <StackLayout Padding="32">
+                <StackLayout Padding="32" IsVisible="{Binding Places.Count, Converter={StaticResource InvertedBoolConverter}}">
                     <Label Text="🗺️" 
                            FontSize="48" 
                            HorizontalTextAlignment="Center" />
@@ -232,7 +262,7 @@
                            FontAttributes="Bold"
                            HorizontalTextAlignment="Center"
                            Margin="0,16,0,8" />
-                    <Label Text="Essayez de modifier votre recherche ou vos filtres" 
+                    <Label Text="Essayez de modifier votre recherche, vos filtres ou l'orientation !" 
                            FontSize="14" 
                            HorizontalTextAlignment="Center"
                            TextColor="{AppThemeBinding Light=#8E8E93, Dark=#8E8E93}" />

@@ -17,7 +17,7 @@ namespace MyApp.Views
         {
             try
             {
-                _compassService = ServiceHelper.GetService<ICompassService>();
+                _compassService = GetService<ICompassService>();
             }
             catch
             {
@@ -282,11 +282,8 @@ namespace MyApp.Views
                 }
             }
         }
-    }
 
-    public static class ServiceHelper
-    {
-        public static T? GetService<T>() where T : class
+        private static T? GetService<T>() where T : class
         {
             try
             {

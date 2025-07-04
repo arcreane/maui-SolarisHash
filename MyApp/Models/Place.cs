@@ -104,8 +104,8 @@ namespace MyApp.Models
                 Name = osmElement.MainCategory
             });
 
-            // URL de photo générique basée sur la catégorie
-            place.PhotoUrl = GetCategoryPhotoUrl(osmElement.MainCategory);
+            // Pas d'image URL - laissé vide pour éviter les erreurs réseau
+            place.PhotoUrl = string.Empty;
 
             return place;
         }
@@ -140,22 +140,6 @@ namespace MyApp.Models
         private static double ToRadians(double degrees)
         {
             return degrees * Math.PI / 180;
-        }
-
-        private static string GetCategoryPhotoUrl(string category)
-        {
-            return category.ToLower() switch
-            {
-                var c when c.Contains("restaurant") => "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
-                var c when c.Contains("café") => "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400",
-                var c when c.Contains("musée") => "https://images.unsplash.com/photo-1566139975810-0373b16ffa79?w=400",
-                var c when c.Contains("monument") => "https://images.unsplash.com/photo-1539650116574-75c0c6930311?w=400",
-                var c when c.Contains("parc") => "https://images.unsplash.com/photo-1524721696987-b9527df9e512?w=400",
-                var c when c.Contains("église") => "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
-                var c when c.Contains("hôtel") => "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400",
-                var c when c.Contains("commerce") => "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400",
-                _ => "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400"
-            };
         }
     }
 

@@ -30,7 +30,7 @@ namespace MyApp.Services
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "TravelBuddy/1.0 (Mobile App)");
         }
 
-        public async Task<List<Place>> GetNearbyPlacesAsync(double latitude, double longitude, string query = null, int radius = 1000, int limit = 20)
+        public async Task<List<Place>> GetNearbyPlacesAsync(double latitude, double longitude, string? query = null, int radius = 1000, int limit = 20)
         {
             try
             {
@@ -260,7 +260,7 @@ namespace MyApp.Services
                     {
                         new PlaceCategory { Id = "demo", Name = "Démonstration" }
                     },
-                    PhotoUrl = "https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Demo"
+                    PhotoUrl = string.Empty
                 }
             };
 
