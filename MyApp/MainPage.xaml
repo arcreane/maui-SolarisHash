@@ -257,9 +257,11 @@
                 </Frame>
 
                 <!-- 🗺️ Carte Interactive -->
-                <Frame Style="{StaticResource ModernCard}">
+                <!-- <Frame Style="{StaticResource ModernCard}">
                     <views:OpenStreetMapView Places="{Binding Places}" />
-                </Frame>
+                </Frame> -->
+
+                <views:AdvancedInteractiveMapView Places="{Binding Places}" />
 
                 <!-- 📍 Liste des lieux (compacte) -->
                 <StackLayout IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}"
