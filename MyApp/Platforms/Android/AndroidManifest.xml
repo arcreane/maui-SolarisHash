@@ -26,6 +26,16 @@
 	<uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
 	<uses-feature android:name="android.hardware.sensor.magnetometer" android:required="false" />
 
+	<!-- Permissions appareil photo -->
+	<uses-permission android:name="android.permission.CAMERA" />
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+	<!-- Features appareil photo -->
+	<uses-feature android:name="android.hardware.camera" android:required="false" />
+	<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
 	<!-- Permission pour éviter les crashes -->
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	

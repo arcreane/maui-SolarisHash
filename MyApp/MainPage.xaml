@@ -322,6 +322,11 @@
                     </CollectionView>
                 </StackLayout>
 
+                <!-- 📸 Appareil Photo + Géolocalisation -->
+                <Frame Style="{StaticResource ModernCard}">
+                    <views:CameraLocationView />
+                </Frame>
+
                 <!-- 🔍 Recherche moderne -->
                 <Frame Style="{StaticResource ModernCard}">
                     <StackLayout Spacing="16">

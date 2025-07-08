@@ -2,6 +2,22 @@ using Microsoft.Maui.Devices.Sensors;
 
 namespace MyApp.Services
 {
+    // ✅ CORRECTION: Interface unifiée dans le bon namespace
+    public interface ILocationService
+    {
+        Task<Location?> GetCurrentLocationAsync();
+        Task<Location?> GetLocationByNameAsync(string cityName);
+        bool IsEmulator { get; }
+        event EventHandler<LocationChangedEventArgs> LocationChanged;
+    }
+
+    public class LocationChangedEventArgs : EventArgs
+    {
+        public required Location NewLocation { get; set; }
+        public required string Source { get; set; }
+    }
+
+    // ✅ CORRECTION: Implémentation correcte de l'interface
     public class SamsungLocationService : ILocationService
     {
         public event EventHandler<LocationChangedEventArgs>? LocationChanged;

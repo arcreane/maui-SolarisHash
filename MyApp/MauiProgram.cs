@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using MyApp.Services;
 using MyApp.ViewModels;
-using Microsoft.Maui.Maps;
 
 namespace MyApp
 {
@@ -48,7 +47,6 @@ namespace MyApp
 
             Console.WriteLine("📱 TravelBuddy configuré pour SAMSUNG");
             Console.WriteLine("🛰️ Service GPS Samsung optimisé");
-            Console.WriteLine("🗺️ Microsoft.Maui.Maps configuré"); // ✅ AJOUTÉ
             Console.WriteLine("🎨 Interface moderne avec vraies données");
 #endif
 

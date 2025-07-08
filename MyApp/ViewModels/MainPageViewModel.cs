@@ -584,6 +584,29 @@ namespace MyApp.ViewModels
             return "position inconnue";
         }
 
+        [RelayCommand]
+        private async Task OpenCameraAsync()
+        {
+            try
+            {
+                StatusMessage = "📸 Ouverture de l'appareil photo...";
+                
+                // Cette commande peut être utilisée pour ouvrir l'appareil photo depuis d'autres endroits
+                var cameraPermission = await Permissions.RequestAsync<Permissions.Camera>();
+                if (cameraPermission == PermissionStatus.Granted)
+                {
+                    StatusMessage = "✅ Appareil photo prêt !";
+                }
+                else
+                {
+                    StatusMessage = "❌ Permission appareil photo refusée";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"❌ Erreur appareil photo: {ex.Message}";
+            }
+        }
         public void Dispose()
         {
             try
@@ -592,13 +615,13 @@ namespace MyApp.ViewModels
                 {
                     _locationService.LocationChanged -= OnLocationChanged;
                 }
-                
+
                 if (_orientationService != null)
                 {
                     _orientationService.OrientationChanged -= OnOrientationChanged;
                     Task.Run(async () => await _orientationService.StopAsync());
                 }
-                
+
                 System.Diagnostics.Debug.WriteLine("✅ MainPageViewModel: Ressources nettoyées");
             }
             catch (Exception ex)
