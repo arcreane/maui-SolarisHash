@@ -251,64 +251,76 @@
                     </StackLayout>
                 </Frame>
 
-                <!-- 🧭 Bloc Boussole Samsung -->
+                <!-- 🧭 Boussole Visuelle Samsung -->
                 <Frame Style="{StaticResource ModernCard}">
-                    <StackLayout Spacing="16">
-                        <StackLayout Orientation="Horizontal" Spacing="12">
-                            <Label Text="🧭" FontSize="24" VerticalOptions="Center" />
-                            <StackLayout HorizontalOptions="FillAndExpand">
-                                <Label Text="Boussole Samsung" 
-                                       FontSize="18" 
-                                       FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}" />
-                                <Label Text="{Binding CurrentOrientation}" 
-                                       FontSize="16" 
-                                       FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#007AFF, Dark=#5F85DB}" />
-                                <Label Text="{Binding SensorStatus}" 
-                                       FontSize="12" 
-                                       TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
-                            </StackLayout>
-                        </StackLayout>
-                        
-                        <!-- Contrôles simplifiés -->
-                        <StackLayout Orientation="Horizontal" Spacing="8">
-                            <Button Text="▶️ Démarrer Boussole" 
-                                    Command="{Binding StartCompassCommand}"
-                                    BackgroundColor="{AppThemeBinding Light=#34C759, Dark=#30D158}"
-                                    TextColor="White"
-                                    CornerRadius="8"
-                                    FontSize="14"
-                                    HorizontalOptions="FillAndExpand" />
-                            <Button Text="⏹️ Arrêter" 
-                                    Command="{Binding StopCompassCommand}"
-                                    BackgroundColor="{AppThemeBinding Light=#FF3B30, Dark=#FF453A}"
-                                    TextColor="White"
-                                    CornerRadius="8"
-                                    FontSize="14"
-                                    WidthRequest="100" />
-                        </StackLayout>
-                        
-                        <!-- Aide Samsung -->
-                        <Frame BackgroundColor="{AppThemeBinding Light=#E8F5E8, Dark=#1B5E20}"
-                               BorderColor="Transparent"
-                               CornerRadius="8"
-                               Padding="12">
-                            <StackLayout Spacing="4">
-                                <Label Text="💡 Conseils Samsung:" 
-                                       FontSize="12" 
-                                       FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}" />
-                                <Label Text="• Paramètres → Avancées → Capteurs → Activer" 
-                                       FontSize="11" />
-                                <Label Text="• Calibrez en faisant des '8' avec le téléphone" 
-                                       FontSize="11" />
-                                <Label Text="• Éloignez-vous des objets métalliques" 
-                                       FontSize="11" />
-                            </StackLayout>
-                        </Frame>
-                    </StackLayout>
+                    <views:VisualCompassView />
                 </Frame>
+
+                <!-- 🗺️ Carte Interactive -->
+                <Frame Style="{StaticResource ModernCard}">
+                    <views:InteractiveMapView Places="{Binding Places}" />
+                </Frame>
+
+                <!-- 📍 Liste des lieux (compacte) -->
+                <StackLayout IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}"
+                             Padding="16,0">
+                    <Label Text="📋 Liste détaillée" 
+                           FontSize="18" 
+                           FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}"
+                           Margin="0,16,0,8" />
+
+                    <!-- Liste compacte (3 premiers lieux seulement) -->
+                    <CollectionView ItemsSource="{Binding Places}"
+                                    SelectionMode="Single"
+                                    SelectionChangedCommand="{Binding PlaceSelectedCommand}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Place">
+                                <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
+                                       BorderColor="Transparent"
+                                       CornerRadius="12"
+                                       Padding="16"
+                                       Margin="4,2"
+                                       HasShadow="True">
+                                    
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="40" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Emoji compact -->
+                                        <Label Grid.Column="0"
+                                               Text="{Binding MainCategory, Converter={StaticResource CategoryToEmojiConverter}}"
+                                               FontSize="20"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+
+                                        <!-- Info compacte -->
+                                        <StackLayout Grid.Column="1" Spacing="2" Margin="12,0,0,0">
+                                            <Label Text="{Binding Name}" 
+                                                   FontSize="14" 
+                                                   FontAttributes="Bold" 
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding MainCategory}" 
+                                                   FontSize="11" 
+                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
+                                        </StackLayout>
+
+                                        <!-- Distance compacte -->
+                                        <Label Grid.Column="2" 
+                                               Text="{Binding FormattedDistance}" 
+                                               FontSize="12" 
+                                               FontAttributes="Bold"
+                                               TextColor="{AppThemeBinding Light=#34C759, Dark=#30D158}"
+                                               VerticalOptions="Center" />
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </StackLayout>
 
                 <!-- 🔍 Recherche moderne -->
                 <Frame Style="{StaticResource ModernCard}">

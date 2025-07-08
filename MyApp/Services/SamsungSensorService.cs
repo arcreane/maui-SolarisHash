@@ -8,6 +8,8 @@ namespace MyApp.Services
         Task<bool> TestAccelerometerAsync();
         Task<bool> TestMagnetometerAsync();
         Task<bool> TestGyroscopeAsync();
+        Task StartSensorsAsync(); // ✅ Méthode ajoutée
+        Task StopSensorsAsync();  // ✅ Méthode ajoutée
         event EventHandler<SensorDataEventArgs> SensorDataChanged;
     }
 
@@ -207,6 +209,7 @@ namespace MyApp.Services
             }
         }
 
+        // ✅ MÉTHODE AJOUTÉE: StartSensorsAsync
         public async Task StartSensorsAsync()
         {
             if (_isListening) return;
@@ -232,6 +235,15 @@ namespace MyApp.Services
                 }
 
                 _isListening = true;
+                
+                // Envoyer un événement initial pour indiquer que les capteurs sont actifs
+                SensorDataChanged?.Invoke(this, new SensorDataEventArgs
+                {
+                    Heading = _currentHeading,
+                    DirectionName = GetDirectionName(_currentHeading),
+                    IsWorking = true
+                });
+                
                 await Task.Delay(100);
             }
             catch (Exception ex)
@@ -245,6 +257,7 @@ namespace MyApp.Services
             }
         }
 
+        // ✅ MÉTHODE AJOUTÉE: StopSensorsAsync
         public async Task StopSensorsAsync()
         {
             if (!_isListening) return;

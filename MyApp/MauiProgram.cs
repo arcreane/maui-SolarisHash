@@ -23,7 +23,10 @@ namespace MyApp
             // 📱 SERVICE SAMSUNG: Géolocalisation optimisée pour Samsung
             builder.Services.AddSingleton<ILocationService, SamsungLocationService>();
             
-            // Services capteurs
+            // 🧭 SERVICE CAPTEURS SAMSUNG: Boussole et diagnostic
+            builder.Services.AddSingleton<ISamsungSensorService, SamsungSensorService>();
+            
+            // Services capteurs legacy (pour compatibilité)
             builder.Services.AddSingleton<ICompassService, CompassService>();
             
             // OrientationService avec injection du CompassService
