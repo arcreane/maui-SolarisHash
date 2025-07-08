@@ -142,32 +142,42 @@ namespace MyApp.Views
 
         private void UpdateMapWithPlaces(IEnumerable<Place> places)
         {
-            try
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                _places = places;
-                
-                if (_userLocation != null)
+                try
                 {
-                    LoadMap(_userLocation.Latitude, _userLocation.Longitude);
+                    _places = places;
+
+                    if (_userLocation != null)
+                    {
+                        LoadMap(_userLocation.Latitude, _userLocation.Longitude);
+                        _statusLabel.Text = $"✅ {places.Count()} lieux affichés sur OpenStreetMap";
+                    }
+                    else
+                    {
+                        LoadMap(48.8566, 2.3522);
+                        _statusLabel.Text = $"✅ {places.Count()} lieux affichés (Paris par défaut)";
+                    }
+
+                    // Si tu veux afficher un résumé, ajoute un label dédié (ex : _summaryLabel)
+                    // Exemple :
+                    // if (_summaryLabel != null && places.Any())
+                    // {
+                    //     _summaryLabel.Text = $"📍 {places.Count()} lieux trouvés • Cliquez sur les pins pour plus d'infos";
+                    //     _summaryLabel.BackgroundColor = Color.FromRgb(230, 255, 230);
+                    // }
+
+                    Console.WriteLine($"🗺️ OpenStreetMap mise à jour avec {places.Count()} lieux");
                 }
-                else
+                catch (Exception ex)
                 {
-                    LoadMap(48.8566, 2.3522);
+                    _statusLabel.Text = $"❌ Erreur mise à jour: {ex.Message}";
+                    Console.WriteLine($"❌ Erreur mise à jour carte: {ex.Message}");
                 }
-                
-                var count = places.Count();
-                _statusLabel.Text = count > 0 
-                    ? $"✅ {count} lieux affichés sur la carte • Cliquez pour détails"
-                    : "ℹ️ Aucun lieu à afficher";
-                
-                Console.WriteLine($"🗺️ Carte mise à jour avec {count} lieux");
-            }
-            catch (Exception ex)
-            {
-                _statusLabel.Text = $"❌ Erreur mise à jour: {ex.Message}";
-                Console.WriteLine($"❌ Erreur UpdateMapWithPlaces: {ex.Message}");
-            }
+            });
         }
+
+
 
         private void LoadMap(double lat, double lon)
         {

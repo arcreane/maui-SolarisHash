@@ -108,22 +108,24 @@ namespace MyApp.Services
         }
 
         // ✅ CORRECTION PRINCIPALE: Requête Overpass valide et testée
+        // ... autres méthodes de RobustHttpService ...
+
         private string BuildValidOverpassQuery(double latitude, double longitude, int radius, string? searchQuery)
         {
             var query = new StringBuilder();
-            
+
             // En-tête Overpass correct
             query.AppendLine("[out:json][timeout:25];");
             query.AppendLine("(");
 
-            // ✅ CORRECTION CRITIQUE: Forcer la culture invariante pour les coordonnées
+            // Forcer la culture invariante pour les coordonnées
             var lat = latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
             var lon = longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
 
             if (!string.IsNullOrWhiteSpace(searchQuery))
             {
                 // Recherche spécifique par nom
-                var escaped = searchQuery.Replace("\"", "").Replace("'", ""); // Nettoyer les caractères problématiques
+                var escaped = searchQuery.Replace("\"", "").Replace("'", "");
                 query.AppendLine($"  node[name~\"{escaped}\",i](around:{radius},{lat},{lon});");
                 query.AppendLine($"  way[name~\"{escaped}\",i](around:{radius},{lat},{lon});");
             }
@@ -135,20 +137,19 @@ namespace MyApp.Services
                 query.AppendLine($"  node[historic](around:{radius},{lat},{lon});");
                 query.AppendLine($"  node[leisure~\"^(park|garden|playground)$\"](around:{radius},{lat},{lon});");
                 query.AppendLine($"  node[shop~\"^(supermarket|bakery|butcher)$\"](around:{radius},{lat},{lon});");
-                
-                // Ajouter les ways pour les grands bâtiments
                 query.AppendLine($"  way[tourism](around:{radius},{lat},{lon});");
                 query.AppendLine($"  way[amenity~\"^(restaurant|hospital|school|university)$\"](around:{radius},{lat},{lon});");
             }
 
             query.AppendLine(");");
-            query.AppendLine("out center geom;"); // center geom pour avoir les coordonnées des ways
+            query.AppendLine("out center geom;");
 
             var finalQuery = query.ToString();
             Console.WriteLine($"📱 Requête Overpass construite pour {lat}, {lon}");
-            
+
             return finalQuery;
         }
+
 
         private async Task<List<Place>> TryGetPlaces(string url, string query, double lat, double lon, int limit)
         {
@@ -327,6 +328,7 @@ namespace MyApp.Services
             };
         }
 
+        
         private string GetServerName(string url)
         {
             return url switch

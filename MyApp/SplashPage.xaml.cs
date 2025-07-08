@@ -140,21 +140,23 @@ namespace MyApp
         {
             try
             {
-                // ✅ Vérification simple
-                if (!_animationsRunning)
+                if (!_animationsRunning || particle == null)
                     return;
 
-                // ✅ Durée plus courte pour réactivité
-                var actualDuration = _animationsRunning ? Math.Min(duration, 1000u) : 0u;
+                // ✅ Ensure we're on the main thread for UI operations
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    var actualDuration = _animationsRunning ? Math.Min(duration, 1000u) : 0u;
 
-                await Task.WhenAll(
-                    particle.TranslateTo(
-                        Random.Shared.Next(-50, 50), 
-                        Random.Shared.Next(-30, 30), 
-                        actualDuration, 
-                        Easing.SinInOut),
-                    particle.FadeTo(Random.Shared.NextDouble() * 0.5 + 0.3, actualDuration)
-                );
+                    await Task.WhenAll(
+                        particle.TranslateTo(
+                            Random.Shared.Next(-50, 50), 
+                            Random.Shared.Next(-30, 30), 
+                            actualDuration, 
+                            Easing.SinInOut),
+                        particle.FadeTo(Random.Shared.NextDouble() * 0.5 + 0.3, actualDuration)
+                    );
+                });
             }
             catch (Exception ex)
             {
@@ -277,25 +279,34 @@ namespace MyApp
                 await Task.Delay(600);
 
                 await UpdateStatus("📡 Connexion aux satellites...");
-                await PreloadLocationAsync();
-                await Task.Delay(800);
-                // ✅ Pré-charger la localisation sans bloquer
+                
+                // ✅ Background task for location services
                 _ = Task.Run(async () => 
                 {
                     try
                     {
-                        await _locationService.GetCurrentLocationAsync();
+                        var location = await _locationService.GetCurrentLocationAsync();
+                        
+                        // ✅ UI update must be on main thread
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
+                        {
+                            await UpdateStatus($"📍 Position trouvée: {location?.Latitude:F4}, {location?.Longitude:F4}");
+                        });
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"❌ Erreur préchargement location: {ex.Message}");
+                        
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
+                        {
+                            await UpdateStatus("⚠️ Localisation en cours...");
+                        });
                     }
                 });
+                
                 await Task.Delay(800);
-
                 await UpdateStatus("🗺️ Préparation de la carte...");
                 await Task.Delay(500);
-
                 await UpdateStatus("✨ Tout est prêt pour l'aventure !");
                 await Task.Delay(600);
             }
@@ -311,13 +322,13 @@ namespace MyApp
         {
             try
             {
+                // ✅ Always use InvokeOnMainThreadAsync for UI updates
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     if (StatusLabel != null)
                     {
                         StatusLabel.Text = message;
-
-                        // Petit effet de zoom sur le changement
+                        // Animation effects
                         await StatusLabel.ScaleTo(1.05, 100);
                         await StatusLabel.ScaleTo(1, 100);
                     }
@@ -325,10 +336,28 @@ namespace MyApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur status: {ex.Message}");
+                Console.WriteLine($"❌ Erreur UpdateStatus: {ex.Message}");
             }
         }
 
+        private async Task UpdateStatusDirect(string message)
+        {
+            try
+            {
+                if (StatusLabel != null)
+                {
+                    StatusLabel.Text = message;
+
+                    // Petit effet de zoom sur le changement
+                    await StatusLabel.ScaleTo(1.05, 100);
+                    await StatusLabel.ScaleTo(1, 100);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erreur UpdateStatusDirect: {ex.Message}");
+            }
+        }
 
         private async Task NavigateToMapWithStyle()
         {
@@ -380,28 +409,6 @@ namespace MyApp
                 await Shell.Current.GoToAsync("//MapPage");
             }
         }
-
-        private Task PreloadLocationAsync()
-        {
-            return Task.Run(async () =>
-            {
-                try
-                {
-                    var location = await _locationService.GetCurrentLocationAsync();
-
-                    // Si besoin de mettre à jour l’UI ensuite
-                    await MainThread.InvokeOnMainThreadAsync(() =>
-                    {
-                        StatusLabel.Text = $"📍 Localisation chargée : {location.Latitude}, {location.Longitude}";
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ Erreur localisation en arrière-plan : {ex.Message}");
-                }
-            });
-        }
-
 
         // ✅ Nettoyer les ressources à la fermeture SANS dispose immédiat
         protected override void OnDisappearing()
