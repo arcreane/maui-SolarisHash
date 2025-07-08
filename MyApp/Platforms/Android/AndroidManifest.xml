@@ -1,28 +1,38 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          android:versionCode="1"
+          android:versionName="1.0">
 	
-	<!-- Permissions réseau -->
-	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<!-- Permissions réseau OBLIGATOIRES -->
 	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 	
-	<!-- Permissions géolocalisation -->
+	<!-- Permissions géolocalisation RENFORCÉES pour Samsung -->
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-	<uses-feature android:name="android.hardware.location" android:required="false" />
-	<uses-feature android:name="android.hardware.location.gps" android:required="false" />
+	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 	
-	<!-- Permissions capteurs (boussole/gyroscope) -->
-	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+	<!-- Features GPS pour Samsung -->
+	<uses-feature android:name="android.hardware.location" android:required="true" />
+	<uses-feature android:name="android.hardware.location.gps" android:required="true" />
+	<uses-feature android:name="android.hardware.location.network" android:required="false" />
+	
+	<!-- Permissions capteurs Samsung -->
 	<uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
 	<uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
 	<uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
-
+	<uses-feature android:name="android.hardware.sensor.magnetometer" android:required="false" />
+	
+	<!-- Configuration application pour Samsung -->
 	<application android:allowBackup="true" 
 				 android:icon="@mipmap/appicon" 
 				 android:roundIcon="@mipmap/appicon_round" 
 				 android:supportsRtl="true"
 				 android:label="TravelBuddy"
-				 android:theme="@style/Maui.SplashTheme">
+				 android:theme="@style/Maui.SplashTheme"
+				 android:usesCleartextTraffic="true"
+				 android:requestLegacyExternalStorage="true">
 	</application>
 	
 </manifest>

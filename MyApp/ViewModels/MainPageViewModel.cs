@@ -40,6 +40,12 @@ namespace MyApp.ViewModels
         [ObservableProperty]
         private string selectedCityName = string.Empty;
 
+        [ObservableProperty]
+        private string diagnosticResults = string.Empty;
+
+        [ObservableProperty]
+        private string sensorStatus = "Capteurs non testés";
+
         public ObservableCollection<Place> Places { get; } = new();
         public ObservableCollection<string> FilterOptions { get; } = new()
         {
@@ -346,20 +352,120 @@ namespace MyApp.ViewModels
             }
         }
 
+        [RelayCommand]
+        private async Task DiagnosticSensorsAsync()
+        {
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "🔍 Test des capteurs en cours...";
+                
+                var sensorService = new SamsungSensorService();
+                DiagnosticResults = await sensorService.DiagnosticSensorsAsync();
+                
+                StatusMessage = "✅ Diagnostic terminé - Consultez les résultats";
+                System.Diagnostics.Debug.WriteLine("🔍 Diagnostic capteurs terminé");
+            }
+            catch (Exception ex)
+            {
+                DiagnosticResults = $"❌ Erreur diagnostic: {ex.Message}";
+                StatusMessage = "❌ Erreur lors du diagnostic";
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur diagnostic: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task TestAccelerometerAsync()
+        {
+            try
+            {
+                StatusMessage = "📐 Test de l'accéléromètre...";
+                var sensorService = new SamsungSensorService();
+                var result = await sensorService.TestAccelerometerAsync();
+                
+                SensorStatus = result ? "📐 Accéléromètre: ✅ OK" : "📐 Accéléromètre: ❌ Échec";
+                StatusMessage = SensorStatus;
+            }
+            catch (Exception ex)
+            {
+                SensorStatus = $"📐 Accéléromètre: ❌ Erreur - {ex.Message}";
+                StatusMessage = SensorStatus;
+            }
+        }
+
+        [RelayCommand]
+        private async Task TestMagnetometerAsync()
+        {
+            try
+            {
+                StatusMessage = "🧲 Test du magnétomètre...";
+                var sensorService = new SamsungSensorService();
+                var result = await sensorService.TestMagnetometerAsync();
+                
+                SensorStatus = result ? "🧲 Magnétomètre: ✅ OK" : "🧲 Magnétomètre: ❌ Échec";
+                StatusMessage = SensorStatus;
+            }
+            catch (Exception ex)
+            {
+                SensorStatus = $"🧲 Magnétomètre: ❌ Erreur - {ex.Message}";
+                StatusMessage = SensorStatus;
+            }
+        }
+
+        [RelayCommand]
+        private async Task StartCompassAsync()
+        {
+            try
+            {
+                StatusMessage = "🧭 Démarrage de la boussole...";
+                var sensorService = new SamsungSensorService();
+                await sensorService.StartSensorsAsync();
+                
+                SensorStatus = "🧭 Boussole active";
+                StatusMessage = "✅ Boussole démarrée";
+            }
+            catch (Exception ex)
+            {
+                SensorStatus = $"🧭 Boussole: ❌ {ex.Message}";
+                StatusMessage = "❌ Impossible de démarrer la boussole";
+            }
+        }
+
+        [RelayCommand]
+        private async Task StopCompassAsync()
+        {
+            try
+            {
+                var sensorService = new SamsungSensorService();
+                await sensorService.StopSensorsAsync();
+                
+                SensorStatus = "🧭 Boussole arrêtée";
+                StatusMessage = "🛑 Boussole arrêtée";
+            }
+            catch (Exception ex)
+            {
+                SensorStatus = $"🧭 Erreur arrêt: {ex.Message}";
+            }
+        }
+
         private async Task GetCurrentLocationAsync()
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine("📍 Début de géolocalisation...");
-                
+
                 var location = await _locationService.GetCurrentLocationAsync();
-                
+
                 if (location != null)
                 {
                     _currentLocationCoords = location;
                     CurrentLocation = $"📍 {location.Latitude:F6}, {location.Longitude:F6}";
                     IsLocationEnabled = true;
-                    
+
                     System.Diagnostics.Debug.WriteLine($"✅ Position obtenue: {location.Latitude:F6}, {location.Longitude:F6}");
                 }
                 else

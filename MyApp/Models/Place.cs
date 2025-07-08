@@ -75,8 +75,8 @@ namespace MyApp.Models
                     Longitude = osmElement.Longitude.Value,
                     Address = osmElement.Address,
                     FormattedAddress = osmElement.Address,
-                    City = osmElement.Tags.ContainsKey("addr:city") ? osmElement.Tags["addr:city"] : "",
-                    Country = osmElement.Tags.ContainsKey("addr:country") ? osmElement.Tags["addr:country"] : "France"
+                    City = osmElement.Tags?.ContainsKey("addr:city") == true ? osmElement.Tags["addr:city"] : "", // ✅ Corrigé
+                    Country = osmElement.Tags?.ContainsKey("addr:country") == true ? osmElement.Tags["addr:country"] : "France" // ✅ Corrigé
                 };
 
                 place.Distance = CalculateDistance(userLat, userLon, osmElement.Latitude.Value, osmElement.Longitude.Value);
@@ -90,8 +90,8 @@ namespace MyApp.Models
                     Longitude = firstPoint.Longitude,
                     Address = osmElement.Address,
                     FormattedAddress = osmElement.Address,
-                    City = osmElement.Tags.ContainsKey("addr:city") ? osmElement.Tags["addr:city"] : "",
-                    Country = osmElement.Tags.ContainsKey("addr:country") ? osmElement.Tags["addr:country"] : "France"
+                    City = osmElement.Tags?.ContainsKey("addr:city") == true ? osmElement.Tags["addr:city"] : "", // ✅ Corrigé
+                    Country = osmElement.Tags?.ContainsKey("addr:country") == true ? osmElement.Tags["addr:country"] : "France" // ✅ Corrigé
                 };
 
                 place.Distance = CalculateDistance(userLat, userLon, firstPoint.Latitude, firstPoint.Longitude);

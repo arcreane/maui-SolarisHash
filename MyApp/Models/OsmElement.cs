@@ -11,7 +11,7 @@ namespace MyApp.Models
         public double Version { get; set; }
 
         [JsonProperty("generator")]
-        public string Generator { get; set; }
+        public string Generator { get; set; } = string.Empty; // ✅ Corrigé
 
         [JsonProperty("elements")]
         public List<OsmElement> Elements { get; set; } = new List<OsmElement>();
@@ -21,7 +21,7 @@ namespace MyApp.Models
     public class OsmElement
     {
         [JsonProperty("type")]
-        public string Type { get; set; } // "node", "way", "relation"
+        public string Type { get; set; } = string.Empty; // ✅ Corrigé
 
         [JsonProperty("id")]
         public long Id { get; set; }
@@ -44,21 +44,21 @@ namespace MyApp.Models
         // Propriétés calculées pour faciliter l'usage
         public string Name => GetTag("name") ?? GetTag("name:fr") ?? GetTag("name:en") ?? "Lieu sans nom";
         
-        public string Tourism => GetTag("tourism");
-        public string Amenity => GetTag("amenity");
-        public string Shop => GetTag("shop");
-        public string Historic => GetTag("historic");
-        public string Leisure => GetTag("leisure");
+        public string? Tourism => GetTag("tourism"); // ✅ Nullable
+        public string? Amenity => GetTag("amenity"); // ✅ Nullable
+        public string? Shop => GetTag("shop"); // ✅ Nullable
+        public string? Historic => GetTag("historic"); // ✅ Nullable
+        public string? Leisure => GetTag("leisure"); // ✅ Nullable
         
-        public string Description => GetTag("description") ?? GetTag("description:fr") ?? "";
-        public string Website => GetTag("website") ?? GetTag("contact:website") ?? "";
-        public string Phone => GetTag("phone") ?? GetTag("contact:phone") ?? "";
-        public string OpeningHours => GetTag("opening_hours") ?? "";
+        public string Description => GetTag("description") ?? GetTag("description:fr") ?? string.Empty;
+        public string Website => GetTag("website") ?? GetTag("contact:website") ?? string.Empty;
+        public string Phone => GetTag("phone") ?? GetTag("contact:phone") ?? string.Empty;
+        public string OpeningHours => GetTag("opening_hours") ?? string.Empty;
         
         public string Address => BuildAddress();
         public string MainCategory => DetermineMainCategory();
 
-        private string GetTag(string key)
+        private string? GetTag(string key) // ✅ Nullable return
         {
             return Tags.ContainsKey(key) ? Tags[key] : null;
         }

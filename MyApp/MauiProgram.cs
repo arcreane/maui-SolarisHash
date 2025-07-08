@@ -11,33 +11,19 @@ namespace MyApp
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
-                // .UseMauiMaps() // TEMPORAIREMENT DÉSACTIVÉ pour éviter les erreurs Google Maps
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Services HTTP et API
-            builder.Services.AddSingleton<HttpClient>(serviceProvider =>
-            {
-                var httpClient = new HttpClient();
-                
-                // Configuration optimisée pour les vraies données
-                httpClient.Timeout = TimeSpan.FromSeconds(60);
-                httpClient.DefaultRequestHeaders.Add("User-Agent", "TravelBuddy/1.0 (Real Data App)");
-                
-                return httpClient;
-            });
+            // ⭐ SERVICE PRINCIPAL: Robuste pour téléphone ET émulateur
+            builder.Services.AddSingleton<IPlaceService, RobustHttpService>();
             
-            // ⭐ CHANGEMENT PRINCIPAL: Service avec VRAIES données uniquement
-            builder.Services.AddSingleton<IPlaceService, RealDataOnlyService>();
+            // 📱 SERVICE SAMSUNG: Géolocalisation optimisée pour Samsung
+            builder.Services.AddSingleton<ILocationService, SamsungLocationService>();
             
-            // Alternative si vous voulez garder l'hybride mais sans données fictives:
-            // builder.Services.AddSingleton<IPlaceService, OverpassService>();
-            
-            // Services de localisation et capteurs (ordre important)
-            builder.Services.AddSingleton<ILocationService, SmartLocationService>();
+            // Services capteurs
             builder.Services.AddSingleton<ICompassService, CompassService>();
             
             // OrientationService avec injection du CompassService
@@ -55,9 +41,9 @@ namespace MyApp
             builder.Logging.AddDebug();
             builder.Logging.SetMinimumLevel(LogLevel.Debug);
             
-            // Log pour confirmer la configuration
-            Console.WriteLine("🌍 TravelBuddy configuré avec VRAIES DONNÉES UNIQUEMENT (OpenStreetMap)");
-            Console.WriteLine("📍 Aucune donnée fictive ou de démonstration ne sera utilisée");
+            Console.WriteLine("📱 TravelBuddy configuré pour SAMSUNG");
+            Console.WriteLine("🛰️ Service GPS Samsung optimisé");
+            Console.WriteLine("🎨 Interface moderne avec vraies données");
 #endif
 
             return builder.Build();
