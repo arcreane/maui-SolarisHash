@@ -4,7 +4,6 @@ using MyApp.ViewModels;
 
 namespace MyApp
 {
-    
     public static class MauiProgram
     {
         public static MauiApp CreateMauiApp()
@@ -18,36 +17,27 @@ namespace MyApp
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // ⭐ SERVICE PRINCIPAL: Robuste pour téléphone ET émulateur
+            // Services
             builder.Services.AddSingleton<IPlaceService, RobustHttpService>();
-
-            // 📱 SERVICE SAMSUNG: Géolocalisation optimisée pour Samsung
             builder.Services.AddSingleton<ILocationService, SamsungLocationService>();
-
-            // 🧭 SERVICE CAPTEURS SAMSUNG: Boussole et diagnostic
             builder.Services.AddSingleton<ISamsungSensorService, SamsungSensorService>();
-
-            // Services capteurs legacy (pour compatibilité)
-            builder.Services.AddSingleton<ICompassService, CompassService>();
-
-            // OrientationService avec injection du CompassService
             builder.Services.AddSingleton<IOrientationService>(serviceProvider =>
             {
-                var compassService = serviceProvider.GetService<ICompassService>();
-                return new OrientationService(compassService);
+                return new OrientationService();
             });
 
-            // ViewModels et Pages
+            // ViewModels
             builder.Services.AddTransient<MainPageViewModel>();
-            builder.Services.AddTransient<MainPage>();
+
+            // Pages
+            builder.Services.AddTransient<SplashPage>();
+            builder.Services.AddTransient<MapPage>();
+            builder.Services.AddTransient<MainPage>(); // Garde pour compatibilité
 
 #if DEBUG
             builder.Logging.AddDebug();
             builder.Logging.SetMinimumLevel(LogLevel.Debug);
-
-            Console.WriteLine("📱 TravelBuddy configuré pour SAMSUNG");
-            Console.WriteLine("🛰️ Service GPS Samsung optimisé");
-            Console.WriteLine("🎨 Interface moderne avec vraies données");
+            Console.WriteLine("🚀 TravelBuddy avec Splash + Carte Full-Screen");
 #endif
 
             return builder.Build();

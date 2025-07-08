@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="MyApp.SplashPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             BackgroundColor="#0a0a0a">
+    
+    <!-- Particles d'arrière-plan -->
+    <Grid>
+        <!-- Particules flottantes -->
+        <Ellipse x:Name="Particle1" 
+                 Fill="#33ff6b35" 
+                 WidthRequest="8" 
+                 HeightRequest="8"
+                 HorizontalOptions="Start" 
+                 VerticalOptions="Start"
+                 Margin="50,100,0,0" />
+        
+        <Ellipse x:Name="Particle2" 
+                 Fill="#336b35ff" 
+                 WidthRequest="6" 
+                 HeightRequest="6"
+                 HorizontalOptions="End" 
+                 VerticalOptions="Start"
+                 Margin="0,150,80,0" />
+        
+        <Ellipse x:Name="Particle3" 
+                 Fill="#33ff3535" 
+                 WidthRequest="10" 
+                 HeightRequest="10"
+                 HorizontalOptions="Start" 
+                 VerticalOptions="End"
+                 Margin="100,0,0,200" />
+        
+        <Ellipse x:Name="Particle4" 
+                 Fill="#3535ff35" 
+                 WidthRequest="7" 
+                 HeightRequest="7"
+                 HorizontalOptions="End" 
+                 VerticalOptions="End"
+                 Margin="0,0,60,150" />
+
+        <!-- Contenu principal -->
+        <StackLayout VerticalOptions="Center" 
+                     HorizontalOptions="Center" 
+                     Spacing="30">
+            
+            <!-- Logo avec bordure -->
+            <Border x:Name="LogoBorder"
+                    BackgroundColor="#1a1a1a"
+                    Stroke="#ff6b35"
+                    StrokeThickness="3"
+                    StrokeShape="RoundRectangle 20"
+                    WidthRequest="120"
+                    HeightRequest="120"
+                    HorizontalOptions="Center">
+                
+                <Label x:Name="LogoIcon"
+                       Text="🗺️"
+                       FontSize="60"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </Border>
+
+            <!-- Titre -->
+            <Label x:Name="TitleLabel"
+                   Text="Solaris Hash"
+                   FontSize="32"
+                   FontAttributes="Bold"
+                   TextColor="#ff6b35"
+                   HorizontalOptions="Center" />
+
+            <!-- Sous-titre -->
+            <Label x:Name="SubtitleLabel"
+                   Text="Explorez le monde mystérieux"
+                   FontSize="16"
+                   TextColor="#cccccc"
+                   HorizontalOptions="Center" />
+
+            <!-- Zone de chargement -->
+            <StackLayout x:Name="LoadingStack" 
+                         Spacing="20" 
+                         HorizontalOptions="Center">
+                
+                <!-- Indicateur de chargement -->
+                <StackLayout Orientation="Horizontal" 
+                             Spacing="8" 
+                             HorizontalOptions="Center">
+                    
+                    <Ellipse x:Name="Dot1"
+                             Fill="#ff6b35"
+                             WidthRequest="12"
+                             HeightRequest="12"
+                             Opacity="0.4" />
+                    
+                    <Ellipse x:Name="Dot2"
+                             Fill="#ff6b35"
+                             WidthRequest="12"
+                             HeightRequest="12"
+                             Opacity="0.4" />
+                    
+                    <Ellipse x:Name="Dot3"
+                             Fill="#ff6b35"
+                             WidthRequest="12"
+                             HeightRequest="12"
+                             Opacity="0.4" />
+                    
+                    <Ellipse x:Name="Dot4"
+                             Fill="#ff6b35"
+                             WidthRequest="12"
+                             HeightRequest="12"
+                             Opacity="0.4" />
+                </StackLayout>
+
+                <!-- Message de statut -->
+                <Label x:Name="StatusLabel"
+                       Text="🔮 Initialisation..."
+                       FontSize="14"
+                       TextColor="#999999"
+                       HorizontalOptions="Center" />
+            </StackLayout>
+        </StackLayout>
+    </Grid>
+</ContentPage>

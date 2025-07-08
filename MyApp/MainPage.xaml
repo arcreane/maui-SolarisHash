@@ -36,18 +36,6 @@
                 <Setter Property="HeightRequest" Value="50" />
                 <Setter Property="FontSize" Value="16" />
             </Style>
-            
-            <Style x:Key="HeaderLabel" TargetType="Label">
-                <Setter Property="FontSize" Value="28" />
-                <Setter Property="FontAttributes" Value="Bold" />
-                <Setter Property="TextColor" Value="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-            </Style>
-            
-            <Style x:Key="SubHeaderLabel" TargetType="Label">
-                <Setter Property="FontSize" Value="16" />
-                <Setter Property="TextColor" Value="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
-                <Setter Property="Opacity" Value="0.8" />
-            </Style>
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -55,7 +43,7 @@
         <ScrollView>
             <StackLayout Spacing="0" Padding="0">
                 
-                <!-- 🎨 Header moderne avec gradient -->
+                <!-- 🎨 Header moderne -->
                 <Frame BackgroundColor="Transparent" 
                        HasShadow="False" 
                        Padding="0" 
@@ -85,7 +73,7 @@
                     </StackLayout>
                 </Frame>
 
-                <!-- 📍 Localisation moderne -->
+                <!-- 📍 Localisation -->
                 <Frame Style="{StaticResource ModernCard}">
                     <StackLayout Spacing="16">
                         <!-- Position actuelle -->
@@ -106,7 +94,7 @@
                                     Command="{Binding RefreshLocationCommand}" />
                         </StackLayout>
                         
-                        <!-- Sélecteur de ville moderne -->
+                        <!-- Sélecteur de ville -->
                         <StackLayout Spacing="12">
                             <Label Text="🏙️ Choisir une ville" 
                                    FontSize="18" 
@@ -134,7 +122,7 @@
                                 </StackLayout>
                             </Frame>
                             
-                            <!-- Villes populaires avec style moderne - CORRIGÉ -->
+                            <!-- Villes populaires -->
                             <Label Text="Villes populaires :" 
                                    FontSize="14" 
                                    TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
@@ -166,7 +154,7 @@
                     </StackLayout>
                 </Frame>
 
-                <!-- 🧭 Contrôles d'orientation moderne -->
+                <!-- 🧭 Contrôles d'orientation -->
                 <Frame Style="{StaticResource ModernCard}">
                     <StackLayout Spacing="16">
                         <StackLayout Orientation="Horizontal" Spacing="12">
@@ -194,140 +182,13 @@
                     </StackLayout>
                 </Frame>
 
-                <!-- 🔧 Bloc Diagnostic Capteurs Samsung -->
-                <Frame Style="{StaticResource ModernCard}">
-                    <StackLayout Spacing="16">
-                        <StackLayout Orientation="Horizontal" Spacing="12">
-                            <Label Text="🔧" FontSize="24" VerticalOptions="Center" />
-                            <StackLayout HorizontalOptions="FillAndExpand">
-                                <Label Text="Diagnostic Capteurs Samsung" 
-                                       FontSize="18" 
-                                       FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}" />
-                                <Label Text="Testez si vos capteurs fonctionnent" 
-                                       FontSize="12" 
-                                       TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
-                            </StackLayout>
-                        </StackLayout>
-                        
-                        <!-- Boutons de test -->
-                        <StackLayout Orientation="Horizontal" Spacing="8">
-                            <Button Text="🔍 Test Complet" 
-                                    Command="{Binding DiagnosticSensorsCommand}"
-                                    BackgroundColor="{AppThemeBinding Light=#007AFF, Dark=#5F85DB}"
-                                    TextColor="White"
-                                    CornerRadius="8"
-                                    FontSize="12"
-                                    HorizontalOptions="FillAndExpand" />
-                            <Button Text="📐 Accél." 
-                                    Command="{Binding TestAccelerometerCommand}"
-                                    BackgroundColor="{AppThemeBinding Light=#34C759, Dark=#30D158}"
-                                    TextColor="White"
-                                    CornerRadius="8"
-                                    FontSize="12"
-                                    WidthRequest="80" />
-                            <Button Text="🧲 Mag." 
-                                    Command="{Binding TestMagnetometerCommand}"
-                                    BackgroundColor="{AppThemeBinding Light=#FF9500, Dark=#FF9F0A}"
-                                    TextColor="White"
-                                    CornerRadius="8"
-                                    FontSize="12"
-                                    WidthRequest="80" />
-                        </StackLayout>
-                        
-                        <!-- Résultats du diagnostic -->
-                        <Frame BackgroundColor="{AppThemeBinding Light=#F8F8F8, Dark=#2C2C2C}"
-                               BorderColor="Transparent"
-                               CornerRadius="8"
-                               Padding="12"
-                               IsVisible="{Binding DiagnosticResults, Converter={StaticResource IsNotNullConverter}}">
-                            <ScrollView HeightRequest="150">
-                                <Label Text="{Binding DiagnosticResults}" 
-                                       FontSize="10"
-                                       FontFamily="monospace"
-                                       TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}" />
-                            </ScrollView>
-                        </Frame>
-                    </StackLayout>
-                </Frame>
-
-                <!-- 🧭 Boussole Visuelle Samsung -->
+                <!-- 🧭 Boussole Visuelle -->
                 <Frame Style="{StaticResource ModernCard}">
                     <views:VisualCompassView />
                 </Frame>
 
-                <!-- 🗺️ Carte Interactive -->
-                <!-- <Frame Style="{StaticResource ModernCard}">
-                    <views:OpenStreetMapView Places="{Binding Places}" />
-                </Frame> -->
-
+                <!-- 🗺️ Carte Interactive PRINCIPALE -->
                 <views:AdvancedInteractiveMapView Places="{Binding Places}" />
-
-                <!-- 📍 Liste des lieux (compacte) -->
-                <StackLayout IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}"
-                             Padding="16,0">
-                    <Label Text="📋 Liste détaillée" 
-                           FontSize="18" 
-                           FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}"
-                           Margin="0,16,0,8" />
-
-                    <!-- Liste compacte (3 premiers lieux seulement) -->
-                    <CollectionView ItemsSource="{Binding Places}"
-                                    SelectionMode="Single"
-                                    SelectionChangedCommand="{Binding PlaceSelectedCommand}">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate x:DataType="models:Place">
-                                <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
-                                       BorderColor="Transparent"
-                                       CornerRadius="12"
-                                       Padding="16"
-                                       Margin="4,2"
-                                       HasShadow="True">
-                                    
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="40" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- Emoji compact -->
-                                        <Label Grid.Column="0"
-                                               Text="{Binding MainCategory, Converter={StaticResource CategoryToEmojiConverter}}"
-                                               FontSize="20"
-                                               HorizontalOptions="Center"
-                                               VerticalOptions="Center" />
-
-                                        <!-- Info compacte -->
-                                        <StackLayout Grid.Column="1" Spacing="2" Margin="12,0,0,0">
-                                            <Label Text="{Binding Name}" 
-                                                   FontSize="14" 
-                                                   FontAttributes="Bold" 
-                                                   LineBreakMode="TailTruncation" />
-                                            <Label Text="{Binding MainCategory}" 
-                                                   FontSize="11" 
-                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
-                                        </StackLayout>
-
-                                        <!-- Distance compacte -->
-                                        <Label Grid.Column="2" 
-                                               Text="{Binding FormattedDistance}" 
-                                               FontSize="12" 
-                                               FontAttributes="Bold"
-                                               TextColor="{AppThemeBinding Light=#34C759, Dark=#30D158}"
-                                               VerticalOptions="Center" />
-                                    </Grid>
-                                </Frame>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </StackLayout>
-
-                <!-- 📸 Appareil Photo + Géolocalisation -->
-                <Frame Style="{StaticResource ModernCard}">
-                    <views:CameraLocationView />
-                </Frame>
 
                 <!-- 🔍 Recherche moderne -->
                 <Frame Style="{StaticResource ModernCard}">
@@ -361,7 +222,7 @@
                     </StackLayout>
                 </Frame>
 
-                <!-- 🚀 Bouton de recherche principal moderne -->
+                <!-- 🚀 Bouton de recherche principal -->
                 <Frame Padding="16" BackgroundColor="Transparent" HasShadow="False">
                     <Button Text="🔍 Chercher des lieux" 
                             Command="{Binding LoadPlacesCommand}"
@@ -370,7 +231,7 @@
                             FontSize="18" />
                 </Frame>
 
-                <!-- 📊 Message de statut moderne -->
+                <!-- 📊 Message de statut -->
                 <Frame BackgroundColor="Transparent" HasShadow="False" Padding="16,8">
                     <Label Text="{Binding StatusMessage}" 
                            FontSize="16" 
@@ -379,11 +240,11 @@
                            FontAttributes="Bold" />
                 </Frame>
 
-                <!-- 📍 Liste des lieux moderne -->
+                <!-- 📍 Liste des lieux compacte -->
                 <StackLayout IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}"
                              Padding="16,0">
-                    <Label Text="🏛️ Lieux trouvés" 
-                           FontSize="24" 
+                    <Label Text="📋 Liste détaillée" 
+                           FontSize="18" 
                            FontAttributes="Bold"
                            TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}"
                            Margin="0,16,0,8" />
@@ -395,121 +256,48 @@
                             <DataTemplate x:DataType="models:Place">
                                 <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
                                        BorderColor="Transparent"
-                                       CornerRadius="16"
-                                       Padding="20"
-                                       Margin="8,6"
+                                       CornerRadius="12"
+                                       Padding="16"
+                                       Margin="4,2"
                                        HasShadow="True">
                                     
                                     <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="60" />
+                                            <ColumnDefinition Width="40" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Emoji moderne avec background -->
-                                        <Frame Grid.Row="0" 
-                                               Grid.Column="0" 
-                                               Grid.RowSpan="2"
-                                               CornerRadius="30" 
-                                               Padding="0" 
-                                               HasShadow="False"
-                                               HeightRequest="60"
-                                               WidthRequest="60"
-                                               BackgroundColor="{AppThemeBinding Light=#F0F8FF, Dark=#2C3E50}">
-                                            <Label Text="{Binding MainCategory, Converter={StaticResource CategoryToEmojiConverter}}"
-                                                   FontSize="28"
-                                                   HorizontalOptions="Center"
-                                                   VerticalOptions="Center" />
-                                        </Frame>
+                                        <!-- Emoji -->
+                                        <Label Grid.Column="0"
+                                               Text="{Binding MainCategory, Converter={StaticResource CategoryToEmojiConverter}}"
+                                               FontSize="20"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
 
-                                        <!-- Nom et catégorie -->
-                                        <StackLayout Grid.Row="0" Grid.Column="1" Spacing="4" Margin="16,0,0,0">
+                                        <!-- Info -->
+                                        <StackLayout Grid.Column="1" Spacing="2" Margin="12,0,0,0">
                                             <Label Text="{Binding Name}" 
-                                                   FontSize="18" 
+                                                   FontSize="14" 
                                                    FontAttributes="Bold" 
-                                                   TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}"
                                                    LineBreakMode="TailTruncation" />
                                             <Label Text="{Binding MainCategory}" 
-                                                   FontSize="14" 
-                                                   TextColor="{AppThemeBinding Light=#4285F4, Dark=#5F85DB}"
-                                                   FontAttributes="Bold" />
+                                                   FontSize="11" 
+                                                   TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
                                         </StackLayout>
 
-                                        <!-- Distance avec style moderne -->
-                                        <Frame Grid.Row="0" 
-                                               Grid.Column="2" 
-                                               BackgroundColor="{AppThemeBinding Light=#E8F5E8, Dark=#1B5E20}"
-                                               BorderColor="Transparent"
-                                               CornerRadius="15"
-                                               Padding="12,6"
-                                               HasShadow="False"
-                                               VerticalOptions="Center">
-                                            <Label Text="{Binding FormattedDistance}" 
-                                                   FontSize="14" 
-                                                   FontAttributes="Bold"
-                                                   TextColor="{AppThemeBinding Light=#2E7D32, Dark=#81C784}"
-                                                   HorizontalOptions="Center" />
-                                        </Frame>
-
-                                        <!-- Adresse -->
-                                        <Label Grid.Row="1" 
-                                               Grid.Column="1" 
-                                               Grid.ColumnSpan="2"
-                                               Text="{Binding Address}" 
-                                               FontSize="13" 
-                                               TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}"
-                                               LineBreakMode="TailTruncation"
-                                               Margin="16,4,0,0" />
-
-                                        <!-- Description moderne -->
-                                        <Label Grid.Row="2" 
-                                               Grid.Column="0"
-                                               Grid.ColumnSpan="3"
-                                               Text="{Binding Description}" 
-                                               FontSize="13" 
-                                               LineBreakMode="WordWrap"
-                                               MaxLines="2"
-                                               TextColor="{AppThemeBinding Light=#888888, Dark=#AAAAAA}"
-                                               IsVisible="{Binding Description, Converter={StaticResource IsNotNullConverter}}"
-                                               Margin="0,8,0,0" />
+                                        <!-- Distance -->
+                                        <Label Grid.Column="2" 
+                                               Text="{Binding FormattedDistance}" 
+                                               FontSize="12" 
+                                               FontAttributes="Bold"
+                                               TextColor="{AppThemeBinding Light=#34C759, Dark=#30D158}"
+                                               VerticalOptions="Center" />
                                     </Grid>
                                 </Frame>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
-                </StackLayout>
-
-                <!-- 🚫 Message si aucun lieu trouvé - Style moderne -->
-                <StackLayout Padding="32" 
-                             IsVisible="{Binding Places.Count, Converter={StaticResource InvertedBoolConverter}}"
-                             Spacing="16">
-                    <Frame BackgroundColor="{AppThemeBinding Light=#FFF8E1, Dark=#3E2723}"
-                           BorderColor="Transparent"
-                           CornerRadius="20"
-                           Padding="32"
-                           HasShadow="True">
-                        <StackLayout Spacing="16" HorizontalOptions="Center">
-                            <Label Text="🗺️" 
-                                   FontSize="64" 
-                                   HorizontalTextAlignment="Center" />
-                            <Label Text="Aucun lieu trouvé" 
-                                   FontSize="22" 
-                                   FontAttributes="Bold"
-                                   HorizontalTextAlignment="Center"
-                                   TextColor="{AppThemeBinding Light=#F57F17, Dark=#FFD54F}" />
-                            <Label Text="Essayez de modifier votre recherche, vos filtres ou l'orientation !" 
-                                   FontSize="16" 
-                                   HorizontalTextAlignment="Center"
-                                   TextColor="{AppThemeBinding Light=#F9A825, Dark=#FFCC02}"
-                                   LineBreakMode="WordWrap" />
-                        </StackLayout>
-                    </Frame>
                 </StackLayout>
 
                 <!-- Espacement final -->
@@ -518,7 +306,7 @@
             </StackLayout>
         </ScrollView>
 
-        <!-- 🔄 Indicateur de chargement moderne -->
+        <!-- 🔄 Indicateur de chargement -->
         <Frame BackgroundColor="{AppThemeBinding Light=White, Dark=Black}" 
                Opacity="0.95" 
                IsVisible="{Binding IsLoading}"
@@ -536,10 +324,6 @@
                        FontAttributes="Bold"
                        HorizontalTextAlignment="Center"
                        TextColor="{AppThemeBinding Light=#4285F4, Dark=#5F85DB}" />
-                <Label Text="Veuillez patienter..." 
-                       FontSize="14" 
-                       HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#666666, Dark=#CCCCCC}" />
             </StackLayout>
         </Frame>
     </Grid>

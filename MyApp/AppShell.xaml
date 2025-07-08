@@ -5,11 +5,18 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:MyApp"
     Shell.FlyoutBehavior="Disabled"
-    Title="MyApp">
+    Title="TravelBuddy">
 
+    <!-- Page de lancement -->
     <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Title="Splash"
+        ContentTemplate="{DataTemplate local:SplashPage}"
+        Route="SplashPage" />
+
+    <!-- Page carte principale -->
+    <ShellContent
+        Title="Map"
+        ContentTemplate="{DataTemplate local:MapPage}"
+        Route="MapPage" />
 
 </Shell>

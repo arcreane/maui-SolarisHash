@@ -40,12 +40,6 @@ namespace MyApp.ViewModels
         [ObservableProperty]
         private string selectedCityName = string.Empty;
 
-        [ObservableProperty]
-        private string diagnosticResults = string.Empty;
-
-        [ObservableProperty]
-        private string sensorStatus = "Capteurs non testés";
-
         public ObservableCollection<Place> Places { get; } = new();
         public ObservableCollection<string> FilterOptions { get; } = new()
         {
@@ -70,7 +64,7 @@ namespace MyApp.ViewModels
                 _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
                 _orientationService = orientationService; // Peut être null
                 
-                // S'abonner aux changements (seulement si les services existent)
+                // S'abonner aux changements
                 if (_locationService != null)
                 {
                     _locationService.LocationChanged += OnLocationChanged;
@@ -113,7 +107,7 @@ namespace MyApp.ViewModels
                 
                 System.Diagnostics.Debug.WriteLine("🚀 Début de LoadPlacesAsync");
                 
-                // CORRECTION: Vérifier d'abord si on a déjà une position définie
+                // Vérifier d'abord si on a déjà une position définie
                 if (_currentLocationCoords == null)
                 {
                     await GetCurrentLocationAsync();
@@ -125,13 +119,12 @@ namespace MyApp.ViewModels
                     
                     StatusMessage = "🌐 Recherche de lieux réels...";
                     
-                    // CORRECTION: Augmenter la limite pour avoir plus de résultats
                     var places = await _placeService.GetNearbyPlacesAsync(
                         _currentLocationCoords.Latitude,
                         _currentLocationCoords.Longitude,
                         string.IsNullOrWhiteSpace(SearchQuery) ? null : SearchQuery,
-                        radius: 3000, // Augmenté à 3km
-                        limit: 100    // Augmenté à 100 pour avoir plus de choix
+                        radius: 3000, // 3km
+                        limit: 100    // 100 lieux max
                     );
 
                     System.Diagnostics.Debug.WriteLine($"🏠 Lieux trouvés depuis API: {places.Count}");
@@ -144,13 +137,11 @@ namespace MyApp.ViewModels
 
                     Places.Clear();
                     
-                    // CORRECTION: Afficher plus de lieux (50 au lieu de 20)
                     foreach (var place in filteredPlaces.Take(50))
                     {
                         Places.Add(place);
                     }
 
-                    // CORRECTION: Message plus informatif
                     if (Places.Any())
                     {
                         StatusMessage = $"✅ {Places.Count} lieux trouvés près de {GetLocationName()}";
@@ -205,21 +196,17 @@ namespace MyApp.ViewModels
                 
                 if (location != null)
                 {
-                    // CORRECTION: Bien définir la nouvelle position
                     _currentLocationCoords = location;
                     CurrentLocation = $"🏙️ {SelectedCityName} ({location.Latitude:F4}, {location.Longitude:F4})";
                     IsLocationEnabled = true;
                     
                     System.Diagnostics.Debug.WriteLine($"✅ Coordonnées trouvées pour {SelectedCityName}: {location.Latitude:F6}, {location.Longitude:F6}");
                     
-                    // CORRECTION: Vider les anciens résultats avant la nouvelle recherche
+                    // Vider les anciens résultats
                     Places.Clear();
                     _allPlaces.Clear();
                     
                     StatusMessage = $"📍 Position mise à jour pour {SelectedCityName}";
-                    
-                    // NE PAS lancer automatiquement LoadPlacesAsync ici
-                    // L'utilisateur devra cliquer sur le bouton "Chercher des lieux"
                 }
                 else
                 {
@@ -273,7 +260,7 @@ namespace MyApp.ViewModels
             System.Diagnostics.Debug.WriteLine("🔄 Actualisation de la position demandée");
             StatusMessage = "📍 Actualisation de la position...";
             
-            // CORRECTION: Réinitialiser complètement la position
+            // Réinitialiser complètement la position
             _currentLocationCoords = null;
             Places.Clear();
             _allPlaces.Clear();
@@ -352,106 +339,6 @@ namespace MyApp.ViewModels
             }
         }
 
-        [RelayCommand]
-        private async Task DiagnosticSensorsAsync()
-        {
-            try
-            {
-                IsLoading = true;
-                StatusMessage = "🔍 Test des capteurs en cours...";
-                
-                var sensorService = new SamsungSensorService();
-                DiagnosticResults = await sensorService.DiagnosticSensorsAsync();
-                
-                StatusMessage = "✅ Diagnostic terminé - Consultez les résultats";
-                System.Diagnostics.Debug.WriteLine("🔍 Diagnostic capteurs terminé");
-            }
-            catch (Exception ex)
-            {
-                DiagnosticResults = $"❌ Erreur diagnostic: {ex.Message}";
-                StatusMessage = "❌ Erreur lors du diagnostic";
-                System.Diagnostics.Debug.WriteLine($"❌ Erreur diagnostic: {ex.Message}");
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-
-        [RelayCommand]
-        private async Task TestAccelerometerAsync()
-        {
-            try
-            {
-                StatusMessage = "📐 Test de l'accéléromètre...";
-                var sensorService = new SamsungSensorService();
-                var result = await sensorService.TestAccelerometerAsync();
-                
-                SensorStatus = result ? "📐 Accéléromètre: ✅ OK" : "📐 Accéléromètre: ❌ Échec";
-                StatusMessage = SensorStatus;
-            }
-            catch (Exception ex)
-            {
-                SensorStatus = $"📐 Accéléromètre: ❌ Erreur - {ex.Message}";
-                StatusMessage = SensorStatus;
-            }
-        }
-
-        [RelayCommand]
-        private async Task TestMagnetometerAsync()
-        {
-            try
-            {
-                StatusMessage = "🧲 Test du magnétomètre...";
-                var sensorService = new SamsungSensorService();
-                var result = await sensorService.TestMagnetometerAsync();
-                
-                SensorStatus = result ? "🧲 Magnétomètre: ✅ OK" : "🧲 Magnétomètre: ❌ Échec";
-                StatusMessage = SensorStatus;
-            }
-            catch (Exception ex)
-            {
-                SensorStatus = $"🧲 Magnétomètre: ❌ Erreur - {ex.Message}";
-                StatusMessage = SensorStatus;
-            }
-        }
-
-        [RelayCommand]
-        private async Task StartCompassAsync()
-        {
-            try
-            {
-                StatusMessage = "🧭 Démarrage de la boussole...";
-                var sensorService = new SamsungSensorService();
-                await sensorService.StartSensorsAsync();
-                
-                SensorStatus = "🧭 Boussole active";
-                StatusMessage = "✅ Boussole démarrée";
-            }
-            catch (Exception ex)
-            {
-                SensorStatus = $"🧭 Boussole: ❌ {ex.Message}";
-                StatusMessage = "❌ Impossible de démarrer la boussole";
-            }
-        }
-
-        [RelayCommand]
-        private async Task StopCompassAsync()
-        {
-            try
-            {
-                var sensorService = new SamsungSensorService();
-                await sensorService.StopSensorsAsync();
-                
-                SensorStatus = "🧭 Boussole arrêtée";
-                StatusMessage = "🛑 Boussole arrêtée";
-            }
-            catch (Exception ex)
-            {
-                SensorStatus = $"🧭 Erreur arrêt: {ex.Message}";
-            }
-        }
-
         private async Task GetCurrentLocationAsync()
         {
             try
@@ -490,7 +377,7 @@ namespace MyApp.ViewModels
                 var filteredPlaces = ApplyAllFilters(_allPlaces);
                 
                 Places.Clear();
-                foreach (var place in filteredPlaces.Take(50)) // Augmenté à 50
+                foreach (var place in filteredPlaces.Take(50))
                 {
                     Places.Add(place);
                 }
@@ -579,34 +466,11 @@ namespace MyApp.ViewModels
                 return SelectedCityName;
             
             if (_currentLocationCoords != null)
-                return $"coordonnées actuelles";
+                return "coordonnées actuelles";
             
             return "position inconnue";
         }
 
-        [RelayCommand]
-        private async Task OpenCameraAsync()
-        {
-            try
-            {
-                StatusMessage = "📸 Ouverture de l'appareil photo...";
-                
-                // Cette commande peut être utilisée pour ouvrir l'appareil photo depuis d'autres endroits
-                var cameraPermission = await Permissions.RequestAsync<Permissions.Camera>();
-                if (cameraPermission == PermissionStatus.Granted)
-                {
-                    StatusMessage = "✅ Appareil photo prêt !";
-                }
-                else
-                {
-                    StatusMessage = "❌ Permission appareil photo refusée";
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"❌ Erreur appareil photo: {ex.Message}";
-            }
-        }
         public void Dispose()
         {
             try

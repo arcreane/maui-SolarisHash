@@ -26,7 +26,6 @@ namespace MyApp.Services
     {
         private bool _isListening;
         private double _currentHeading = 0;
-        private readonly ICompassService? _compassService;
 
         public event EventHandler<OrientationChangedEventArgs>? OrientationChanged;
 
@@ -36,11 +35,6 @@ namespace MyApp.Services
             Gyroscope.Default.IsSupported;
 
         public bool IsListening => _isListening;
-
-        public OrientationService(ICompassService? compassService = null)
-        {
-            _compassService = compassService;
-        }
 
         public async Task StartAsync()
         {
@@ -68,12 +62,6 @@ namespace MyApp.Services
                     Gyroscope.Default.Start(SensorSpeed.UI);
                 }
 
-                // Utiliser le service de boussole si disponible
-                if (_compassService?.IsSupported == true)
-                {
-                    _compassService.CompassChanged += OnCompassChanged;
-                    await _compassService.StartAsync();
-                }
 
                 _isListening = true;
                 Console.WriteLine("🧭 Service d'orientation démarré");
@@ -104,11 +92,7 @@ namespace MyApp.Services
                     Gyroscope.Default.ReadingChanged -= OnGyroscopeChanged;
                 }
 
-                if (_compassService?.IsListening == true)
-                {
-                    _compassService.CompassChanged -= OnCompassChanged;
-                    await _compassService.StopAsync();
-                }
+
 
                 _isListening = false;
                 Console.WriteLine("🛑 Service d'orientation arrêté");
@@ -135,11 +119,7 @@ namespace MyApp.Services
             UpdateOrientation();
         }
 
-        private void OnCompassChanged(object? sender, CompassReadingEventArgs e)
-        {
-            _currentHeading = e.HeadingMagneticNorth;
-            UpdateOrientation();
-        }
+
 
         private void UpdateOrientation()
         {

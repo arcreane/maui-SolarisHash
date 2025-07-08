@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:MyApp.Views"
+             xmlns:viewmodels="clr-namespace:MyApp.ViewModels"
+             xmlns:models="clr-namespace:MyApp.Models"
+             xmlns:local="clr-namespace:MyApp.Converters"
+             x:Class="MyApp.MapPage"
+             x:DataType="viewmodels:MainPageViewModel"
+             Title="TravelBuddy"
+             Shell.NavBarIsVisible="False">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <local:CategoryToEmojiConverter x:Key="CategoryToEmojiConverter" />
+            <local:IsNotNullConverter x:Key="IsNotNullConverter" />
+            <local:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid>
+        <!-- 🗺️ CARTE FULL-SCREEN -->
+        <views:AdvancedInteractiveMapView Places="{Binding Places}" />
+        
+        <!-- ⚫ OVERLAY SOMBRE POUR PANNEAU OUVERT -->
+        <BoxView x:Name="DarkOverlay" 
+                 BackgroundColor="Black" 
+                 Opacity="0" 
+                 IsVisible="False" 
+                 InputTransparent="False">
+            <BoxView.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnOverlayTapped" />
+            </BoxView.GestureRecognizers>
+        </BoxView>
+
+        <!-- 🎨 HEADER GLASSMORPHISM -->
+        <Border x:Name="HeaderCard"
+                BackgroundColor="#80FFFFFF"
+                Stroke="Transparent"
+                StrokeThickness="0"
+                Margin="20,60,20,0"
+                VerticalOptions="Start"
+                HorizontalOptions="FillAndExpand">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="25" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.1" Offset="0,8" Radius="20" />
+            </Border.Shadow>
+            
+            <Grid Padding="20,16" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                <!-- Logo animé -->
+                <Frame Grid.Column="0" 
+                       BackgroundColor="#4285F4" 
+                       CornerRadius="22" 
+                       Padding="8" 
+                       WidthRequest="44" 
+                       HeightRequest="44"
+                       HasShadow="False">
+                    <Label Text="🧭" 
+                           FontSize="20" 
+                           HorizontalOptions="Center" 
+                           VerticalOptions="Center" 
+                           TextColor="White" />
+                </Frame>
+
+                <!-- Titre et statut -->
+                <StackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                    <Label Text="TravelBuddy" 
+                           FontSize="20" 
+                           FontAttributes="Bold" 
+                           TextColor="#1A1A1A" />
+                    <Label Text="{Binding StatusMessage}" 
+                           FontSize="13" 
+                           TextColor="#666"
+                           LineBreakMode="TailTruncation" />
+                </StackLayout>
+
+                <!-- Bouton recherche moderne -->
+                <Border Grid.Column="2" 
+                        BackgroundColor="#4285F4" 
+                        Stroke="Transparent"
+                        WidthRequest="44" 
+                        HeightRequest="44">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="22" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#4285F4" Opacity="0.3" Offset="0,4" Radius="12" />
+                    </Border.Shadow>
+                    <Button Text="🔍" 
+                            FontSize="18"
+                            BackgroundColor="Transparent"
+                            TextColor="White"
+                            Command="{Binding LoadPlacesCommand}" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 🎛️ PANNEAU DE RECHERCHE MODERNE -->
+        <Border x:Name="SearchPanel"
+                BackgroundColor="#F8F9FA"
+                Stroke="#E1E5E9"
+                StrokeThickness="1"
+                Margin="0"
+                HorizontalOptions="FillAndExpand"
+                VerticalOptions="End"
+                TranslationY="400">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="24,24,0,0" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.15" Offset="0,-8" Radius="32" />
+            </Border.Shadow>
+            
+            <StackLayout Spacing="24" Padding="24,20,24,40">
+                <!-- Handle élégant -->
+                <Border BackgroundColor="#D1D5DB" 
+                        WidthRequest="48" 
+                        HeightRequest="4" 
+                        HorizontalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="2" />
+                    </Border.StrokeShape>
+                </Border>
+
+                <!-- Titre avec icône -->
+                <StackLayout Orientation="Horizontal" 
+                             HorizontalOptions="Center" 
+                             Spacing="12">
+                    <Label Text="🔍" FontSize="24" />
+                    <Label Text="Recherche Avancée" 
+                           FontSize="20" 
+                           FontAttributes="Bold"
+                           TextColor="#1F2937" />
+                </StackLayout>
+
+                <!-- Barre de recherche glassmorphism -->
+                <Border BackgroundColor="#80FFFFFF" 
+                        Stroke="#E5E7EB" 
+                        StrokeThickness="1"
+                        Padding="4">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <SearchBar Placeholder="Découvrez des lieux incroyables..." 
+                               Text="{Binding SearchQuery}"
+                               SearchCommand="{Binding SearchPlacesCommand}"
+                               BackgroundColor="Transparent"
+                               FontSize="16"
+                               PlaceholderColor="#9CA3AF" />
+                </Border>
+
+                <!-- Filtres stylés avec animations -->
+                <StackLayout Spacing="12">
+                    <Label Text="🏷️ Catégories" 
+                           FontSize="16" 
+                           FontAttributes="Bold" 
+                           TextColor="#374151" />
+                    
+                    <CollectionView ItemsSource="{Binding FilterOptions}"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedFilter}">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Horizontal" ItemSpacing="12" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border BackgroundColor="#EEF2FF"
+                                        Stroke="#C7D2FE"
+                                        StrokeThickness="1"
+                                        Padding="16,10">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="20" />
+                                    </Border.StrokeShape>
+                                    <Label Text="{Binding}" 
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="#4338CA"
+                                           HorizontalOptions="Center" />
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </StackLayout>
+
+                <!-- Contrôle orientation moderne -->
+                <Border BackgroundColor="#80FFFFFF" 
+                        Stroke="#E5E7EB" 
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                        <Frame Grid.Column="0" 
+                               BackgroundColor="#10B981" 
+                               CornerRadius="20" 
+                               Padding="8" 
+                               WidthRequest="40" 
+                               HeightRequest="40"
+                               HasShadow="False">
+                            <Label Text="🧭" 
+                                   FontSize="16" 
+                                   HorizontalOptions="Center" 
+                                   VerticalOptions="Center" />
+                        </Frame>
+                        
+                        <StackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                            <Label Text="Filtre par Direction" 
+                                   FontSize="16" 
+                                   FontAttributes="Bold" 
+                                   TextColor="#1F2937" />
+                            <Label Text="{Binding CurrentOrientation}" 
+                                   FontSize="13" 
+                                   TextColor="#6B7280" />
+                        </StackLayout>
+                        
+                        <Switch Grid.Column="2" 
+                                IsToggled="{Binding IsOrientationFilterEnabled}"
+                                OnColor="#10B981"
+                                ThumbColor="White" />
+                    </Grid>
+                </Border>
+            </StackLayout>
+        </Border>
+
+        <!-- 📍 PANNEAU LIEUX MODERNE -->
+        <Border x:Name="PlacesPanel"
+                BackgroundColor="#FFFFFF"
+                Stroke="Transparent"
+                WidthRequest="340"
+                HorizontalOptions="Start"
+                VerticalOptions="FillAndExpand"
+                TranslationX="-340"
+                IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="0,24,24,0" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.1" Offset="8,0" Radius="24" />
+            </Border.Shadow>
+            
+            <Grid RowDefinitions="Auto,*" Padding="0">
+                <!-- Header élégant -->
+                <Border Grid.Row="0" 
+                        BackgroundColor="#4285F4" 
+                        Stroke="Transparent"
+                        Padding="24,20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="0,24,0,0" />
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                        <Label Grid.Column="0" 
+                               Text="📍" 
+                               FontSize="24" 
+                               TextColor="White" />
+                        <StackLayout Grid.Column="1" VerticalOptions="Center">
+                            <Label Text="{Binding Places.Count, StringFormat='{0} Découvertes'}" 
+                                   FontSize="18" 
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Explorez ces lieux incroyables" 
+                                   FontSize="13" 
+                                   TextColor="#E3F2FD" />
+                        </StackLayout>
+                        <Button Grid.Column="2"
+                                Text="✕"
+                                FontSize="18"
+                                BackgroundColor="#80FFFFFF"
+                                TextColor="White"
+                                CornerRadius="16"
+                                WidthRequest="32"
+                                HeightRequest="32"
+                                Clicked="OnClosePlacesPanel" />
+                    </Grid>
+                </Border>
+
+                <!-- Liste moderne avec cards -->
+                <ScrollView Grid.Row="1" Padding="16,20">
+                    <CollectionView ItemsSource="{Binding Places}"
+                                    SelectionMode="Single"
+                                    SelectionChangedCommand="{Binding PlaceSelectedCommand}">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Place">
+                                <Border BackgroundColor="White"
+                                        Stroke="#F3F4F6"
+                                        StrokeThickness="1"
+                                        Padding="16">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="16" />
+                                    </Border.StrokeShape>
+                                    <Border.Shadow>
+                                        <Shadow Brush="Black" Opacity="0.05" Offset="0,2" Radius="8" />
+                                    </Border.Shadow>
+                                    
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                        <!-- Icône category avec fond coloré -->
+                                        <Border Grid.Column="0" 
+                                                BackgroundColor="#F0F9FF" 
+                                                WidthRequest="48" 
+                                                HeightRequest="48"
+                                                Stroke="#BAE6FD"
+                                                StrokeThickness="1">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="12" />
+                                            </Border.StrokeShape>
+                                            <Label Text="{Binding MainCategory, Converter={StaticResource CategoryToEmojiConverter}}"
+                                                   FontSize="20"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Border>
+
+                                        <!-- Infos du lieu -->
+                                        <StackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                                            <Label Text="{Binding Name}" 
+                                                   FontSize="16" 
+                                                   FontAttributes="Bold"
+                                                   TextColor="#1F2937"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding MainCategory}" 
+                                                   FontSize="13" 
+                                                   TextColor="#6B7280" />
+                                        </StackLayout>
+
+                                        <!-- Distance avec style -->
+                                        <Border Grid.Column="2" 
+                                                BackgroundColor="#ECFDF5" 
+                                                Stroke="#BBF7D0"
+                                                StrokeThickness="1"
+                                                Padding="8,4">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8" />
+                                            </Border.StrokeShape>
+                                            <Label Text="{Binding FormattedDistance}" 
+                                                   FontSize="12" 
+                                                   FontAttributes="Bold"
+                                                   TextColor="#059669" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </ScrollView>
+            </Grid>
+        </Border>
+
+        <!-- 🎨 BOUTONS FLOTTANTS MODERNES -->
+        
+        <!-- Bouton Recherche Floating -->
+        <Border x:Name="SearchToggleButtonFrame"
+                BackgroundColor="#FF6B6B"
+                WidthRequest="64"
+                HeightRequest="64"
+                HorizontalOptions="End"
+                VerticalOptions="End"
+                Margin="24,0,24,120">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="32" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="#FF6B6B" Opacity="0.4" Offset="0,8" Radius="20" />
+            </Border.Shadow>
+            <Button x:Name="SearchToggleButton"
+                    Text="⚙️"
+                    FontSize="24"
+                    BackgroundColor="Transparent"
+                    TextColor="White"
+                    Clicked="OnSearchToggleClicked" />
+        </Border>
+
+        <!-- Bouton Lieux Floating -->
+        <Border x:Name="PlacesToggleButtonFrame"
+                BackgroundColor="#4ECDC4"
+                WidthRequest="64"
+                HeightRequest="64"
+                HorizontalOptions="Start"
+                VerticalOptions="Center"
+                Margin="24,0,0,0"
+                IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="32" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="#4ECDC4" Opacity="0.4" Offset="0,8" Radius="20" />
+            </Border.Shadow>
+            <Button x:Name="PlacesToggleButton"
+                    Text="📍"
+                    FontSize="24"
+                    BackgroundColor="Transparent"
+                    TextColor="White"
+                    Clicked="OnPlacesToggleClicked" />
+        </Border>
+
+        <!-- 💫 INDICATEUR DE CHARGEMENT PREMIUM -->
+        <Border BackgroundColor="#80FFFFFF" 
+                IsVisible="{Binding IsLoading}"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                Padding="32,24"
+                Stroke="Transparent">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="20" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.15" Offset="0,8" Radius="24" />
+            </Border.Shadow>
+            
+            <StackLayout Spacing="20" HorizontalOptions="Center">
+                <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                                   Color="#4285F4" 
+                                   Scale="1.8" />
+                <StackLayout Spacing="4">
+                    <Label Text="✨ Recherche en cours..." 
+                           FontSize="18" 
+                           FontAttributes="Bold"
+                           HorizontalTextAlignment="Center"
+                           TextColor="#1F2937" />
+                    <Label Text="Découvrons ensemble de nouveaux lieux" 
+                           FontSize="14" 
+                           HorizontalTextAlignment="Center"
+                           TextColor="#6B7280" />
+                </StackLayout>
+            </StackLayout>
+        </Border>
+
+    </Grid>
+
+</ContentPage>

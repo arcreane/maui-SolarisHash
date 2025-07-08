@@ -11,8 +11,6 @@
 	<!-- Permissions géolocalisation RENFORCÉES pour Samsung -->
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-	<uses-permission android:name="android.permission.INTERNET" />
-	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 	
 	<!-- Features GPS pour Samsung -->
@@ -36,21 +34,6 @@
 	<uses-feature android:name="android.hardware.camera" android:required="false" />
 	<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
-	<!-- Permissions pour partage de fichiers -->
-	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-	<uses-permission android:name="android.permission.CAMERA" />
-	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-
-	<!-- Support partage -->
-	<provider android:name="androidx.core.content.FileProvider"
-			android:authorities="${applicationId}.fileprovider"
-			android:exported="false"
-			android:grantUriPermissions="true">
-		<meta-data android:name="android.support.FILE_PROVIDER_PATHS"
-				android:resource="@xml/file_paths" />
-	</provider>
-
 	<!-- Permission pour éviter les crashes -->
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	
@@ -63,6 +46,16 @@
 				 android:theme="@style/Maui.SplashTheme"
 				 android:usesCleartextTraffic="true"
 				 android:requestLegacyExternalStorage="true">
+		
+		<!-- CORRECTION: Provider déplacé à l'intérieur de <application> -->
+		<provider android:name="androidx.core.content.FileProvider"
+				  android:authorities="${applicationId}.fileprovider"
+				  android:exported="false"
+				  android:grantUriPermissions="true">
+			<meta-data android:name="android.support.FILE_PROVIDER_PATHS"
+					   android:resource="@xml/file_paths" />
+		</provider>
+
 	</application>
 	
 </manifest>
