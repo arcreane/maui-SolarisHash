@@ -258,7 +258,7 @@
 
                 <!-- 🗺️ Carte Interactive -->
                 <Frame Style="{StaticResource ModernCard}">
-                    <views:InteractiveMapView Places="{Binding Places}" />
+                    <views:OpenStreetMapView Places="{Binding Places}" />
                 </Frame>
 
                 <!-- 📍 Liste des lieux (compacte) -->

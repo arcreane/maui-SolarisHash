@@ -11,6 +11,8 @@
 	<!-- Permissions géolocalisation RENFORCÉES pour Samsung -->
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 	
 	<!-- Features GPS pour Samsung -->
@@ -23,6 +25,9 @@
 	<uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
 	<uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
 	<uses-feature android:name="android.hardware.sensor.magnetometer" android:required="false" />
+
+	<!-- Permission pour éviter les crashes -->
+	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	
 	<!-- Configuration application pour Samsung -->
 	<application android:allowBackup="true" 

@@ -29,8 +29,13 @@ namespace MyApp.Services
             {
                 Console.WriteLine($"📍 Samsung GPS: Tentative de géolocalisation...");
                 
-                // 1. Vérifier et demander les permissions de façon agressive
-                var status = await RequestLocationPermissions();
+                // ✅ SÉCURITÉ: Toujours retourner une position par défaut immédiatement
+                var fallbackLocation = new Location(48.8566, 2.3522); // Paris
+                
+                // ✅ PROTECTION: Essayer les permissions avec timeout
+                var permissionTask = RequestLocationPermissionsWithTimeout();
+                var status = await permissionTask;
+                
                 if (status != PermissionStatus.Granted)
                 {
                     Console.WriteLine($"❌ Permission refusée: {status}");
@@ -39,20 +44,13 @@ namespace MyApp.Services
 
                 Console.WriteLine("✅ Permissions GPS accordées");
 
-                // 2. Vérifier que le GPS est activé
-                if (!await IsLocationServiceEnabled())
-                {
-                    Console.WriteLine("❌ Service de localisation désactivé");
-                    return await GetFallbackLocationAsync("GPS désactivé dans les paramètres");
-                }
-
-                // 3. Essayer plusieurs tentatives avec des paramètres différents
-                var location = await TryMultipleLocationAttempts();
+                // ✅ PROTECTION: Essayer la géolocalisation avec timeout court
+                var locationTask = TryGetLocationWithTimeout();
+                var location = await locationTask;
                 
                 if (location != null)
                 {
                     Console.WriteLine($"✅ Samsung GPS: Position trouvée {location.Latitude:F6}, {location.Longitude:F6}");
-                    Console.WriteLine($"📍 Précision: {location.Accuracy:F0}m, Age: {(DateTime.Now - location.Timestamp).TotalSeconds:F0}s");
                     
                     LocationChanged?.Invoke(this, new LocationChangedEventArgs 
                     { 
@@ -64,7 +62,7 @@ namespace MyApp.Services
                 }
                 else
                 {
-                    Console.WriteLine("❌ Aucune position obtenue après plusieurs tentatives");
+                    Console.WriteLine("❌ Aucune position obtenue, utilisation fallback");
                     return await GetFallbackLocationAsync("GPS timeout");
                 }
             }
@@ -75,32 +73,28 @@ namespace MyApp.Services
             }
         }
 
-        private async Task<PermissionStatus> RequestLocationPermissions()
+        // ✅ NOUVEAU: Permissions avec timeout pour éviter les blocages
+        private async Task<PermissionStatus> RequestLocationPermissionsWithTimeout()
         {
             try
             {
-                // Demander les permissions étape par étape
-                Console.WriteLine("🔐 Demande permission localisation...");
+                Console.WriteLine("🔐 Demande permission avec timeout...");
                 
-                var coarseStatus = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-                Console.WriteLine($"📍 Permission Coarse: {coarseStatus}");
+                // Timeout de 10 secondes pour les permissions
+                var permissionTask = Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+                var timeoutTask = Task.Delay(10000);
                 
-                if (coarseStatus == PermissionStatus.Granted)
+                var completedTask = await Task.WhenAny(permissionTask, timeoutTask);
+                
+                if (completedTask == timeoutTask)
                 {
-                    // Essayer aussi la permission fine si possible
-                    try
-                    {
-                        var fineStatus = await Permissions.RequestAsync<Permissions.LocationAlways>();
-                        Console.WriteLine($"📍 Permission Fine: {fineStatus}");
-                        return fineStatus == PermissionStatus.Granted ? fineStatus : coarseStatus;
-                    }
-                    catch
-                    {
-                        return coarseStatus;
-                    }
+                    Console.WriteLine("⏰ Timeout permissions - fallback");
+                    return PermissionStatus.Denied;
                 }
                 
-                return coarseStatus;
+                var result = await permissionTask;
+                Console.WriteLine($"📍 Permission result: {result}");
+                return result;
             }
             catch (Exception ex)
             {
@@ -109,127 +103,117 @@ namespace MyApp.Services
             }
         }
 
-        private async Task<bool> IsLocationServiceEnabled()
+        // ✅ NOUVEAU: Géolocalisation avec timeout pour éviter les blocages
+        private async Task<Location?> TryGetLocationWithTimeout()
         {
             try
             {
-                // Vérification basique - sur Samsung, si on a les permissions, le GPS est généralement OK
-                await Task.Delay(100);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private async Task<Location?> TryMultipleLocationAttempts()
-        {
-            var attempts = new[]
-            {
-                // Tentative 1: Haute précision, timeout court
-                new GeolocationRequest
-                {
-                    DesiredAccuracy = GeolocationAccuracy.Best,
-                    Timeout = TimeSpan.FromSeconds(10)
-                },
-                // Tentative 2: Précision moyenne, timeout moyen  
-                new GeolocationRequest
+                Console.WriteLine("📍 Géolocalisation avec timeout...");
+                
+                // Essai rapide avec timeout de 8 secondes
+                var locationTask = Geolocation.GetLocationAsync(new GeolocationRequest
                 {
                     DesiredAccuracy = GeolocationAccuracy.Medium,
-                    Timeout = TimeSpan.FromSeconds(15)
-                },
-                // Tentative 3: Précision faible, timeout long
-                new GeolocationRequest
+                    Timeout = TimeSpan.FromSeconds(5) // Timeout court
+                });
+                
+                var timeoutTask = Task.Delay(8000); // Timeout de sécurité
+                
+                var completedTask = await Task.WhenAny(locationTask, timeoutTask);
+                
+                if (completedTask == timeoutTask)
                 {
-                    DesiredAccuracy = GeolocationAccuracy.Low,
-                    Timeout = TimeSpan.FromSeconds(20)
-                }
-            };
-
-            foreach (var (request, attemptNumber) in attempts.Select((r, i) => (r, i + 1)))
-            {
-                try
-                {
-                    Console.WriteLine($"📍 Samsung GPS: Tentative {attemptNumber}/3 (précision: {request.DesiredAccuracy})");
-                    
-                    var location = await Geolocation.GetLocationAsync(request);
-                    
-                    if (location != null)
-                    {
-                        // Vérifier que la position est récente et précise
-                        var age = DateTime.Now - location.Timestamp;
-                        if (age.TotalMinutes < 10 && location.Accuracy < 1000) // Moins de 10min et moins de 1km d'imprécision
-                        {
-                            Console.WriteLine($"✅ Position valide trouvée à la tentative {attemptNumber}");
-                            return location;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"⚠️ Position trop ancienne ou imprécise: {age.TotalMinutes:F1}min, {location.Accuracy:F0}m");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ Tentative {attemptNumber} échouée: {ex.Message}");
+                    Console.WriteLine("⏰ Timeout géolocalisation");
+                    return null;
                 }
                 
-                // Pause entre les tentatives
-                if (attemptNumber < attempts.Length)
+                var location = await locationTask;
+                
+                if (location != null)
                 {
-                    await Task.Delay(2000);
+                    // Vérifier que la position est raisonnable
+                    var age = DateTime.Now - location.Timestamp;
+                    if (age.TotalMinutes < 30 && location.Accuracy < 5000) // Moins de 30min et moins de 5km d'imprécision
+                    {
+                        Console.WriteLine($"✅ Position valide: {location.Latitude:F6}, {location.Longitude:F6}");
+                        return location;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"⚠️ Position trop ancienne ou imprécise: {age.TotalMinutes:F1}min, {location.Accuracy:F0}m");
+                    }
                 }
+                
+                return null;
             }
-
-            return null;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erreur géolocalisation: {ex.Message}");
+                return null;
+            }
         }
 
         public async Task<Location?> GetLocationByNameAsync(string cityName)
         {
-            await Task.Delay(100);
-
-            var normalizedName = cityName.ToLower()
-                .Replace("é", "e").Replace("è", "e").Replace("ê", "e")
-                .Replace("à", "a").Replace("ù", "u").Replace("ô", "o")
-                .Replace("î", "i").Replace("ç", "c")
-                .Replace("-", " ").Replace("saint ", "saint-")
-                .Trim();
-
-            if (_cityCoordinates.TryGetValue(normalizedName, out var coordinates))
+            try
             {
-                var location = new Location(coordinates.Lat, coordinates.Lon);
-                Console.WriteLine($"🏙️ Ville trouvée: {cityName} -> {coordinates.Lat:F4}, {coordinates.Lon:F4}");
-                
-                LocationChanged?.Invoke(this, new LocationChangedEventArgs 
-                { 
-                    NewLocation = location, 
-                    Source = "City Search" 
-                });
-                
-                return location;
-            }
+                await Task.Delay(100);
 
-            Console.WriteLine($"❌ Ville non trouvée: {cityName}");
-            return null;
+                var normalizedName = cityName.ToLower()
+                    .Replace("é", "e").Replace("è", "e").Replace("ê", "e")
+                    .Replace("à", "a").Replace("ù", "u").Replace("ô", "o")
+                    .Replace("î", "i").Replace("ç", "c")
+                    .Replace("-", " ").Replace("saint ", "saint-")
+                    .Trim();
+
+                if (_cityCoordinates.TryGetValue(normalizedName, out var coordinates))
+                {
+                    var location = new Location(coordinates.Lat, coordinates.Lon);
+                    Console.WriteLine($"🏙️ Ville trouvée: {cityName} -> {coordinates.Lat:F4}, {coordinates.Lon:F4}");
+                    
+                    LocationChanged?.Invoke(this, new LocationChangedEventArgs 
+                    { 
+                        NewLocation = location, 
+                        Source = "City Search" 
+                    });
+                    
+                    return location;
+                }
+
+                Console.WriteLine($"❌ Ville non trouvée: {cityName}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erreur recherche ville: {ex.Message}");
+                return null;
+            }
         }
 
         private async Task<Location> GetFallbackLocationAsync(string reason)
         {
-            Console.WriteLine($"🆘 Fallback géolocalisation: {reason}");
-            
-            // Position par défaut: Paris (plutôt qu'une ville aléatoire)
-            var fallbackLocation = new Location(48.8566, 2.3522);
-            Console.WriteLine("🏛️ Position par défaut: Paris (Champs-Élysées)");
-            
-            LocationChanged?.Invoke(this, new LocationChangedEventArgs 
-            { 
-                NewLocation = fallbackLocation, 
-                Source = $"Fallback ({reason})" 
-            });
-            
-            await Task.Delay(100);
-            return fallbackLocation;
+            try
+            {
+                Console.WriteLine($"🆘 Fallback géolocalisation: {reason}");
+                
+                // Position par défaut: Paris (plutôt qu'une ville aléatoire)
+                var fallbackLocation = new Location(48.8566, 2.3522);
+                Console.WriteLine("🏛️ Position par défaut: Paris (Champs-Élysées)");
+                
+                LocationChanged?.Invoke(this, new LocationChangedEventArgs 
+                { 
+                    NewLocation = fallbackLocation, 
+                    Source = $"Fallback ({reason})" 
+                });
+                
+                await Task.Delay(100);
+                return fallbackLocation;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erreur fallback: {ex.Message}");
+                return new Location(48.8566, 2.3522); // Paris en cas d'erreur totale
+            }
         }
     }
 }
