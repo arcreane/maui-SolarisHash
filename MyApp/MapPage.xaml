@@ -97,6 +97,55 @@
             </Grid>
         </Border>
 
+        <!-- ✅ NOUVEAU: PANNEAU BOUSSOLE FLOTTANT -->
+        <Border x:Name="CompassPanel"
+                BackgroundColor="#F8F9FA"
+                Stroke="#E1E5E9"
+                StrokeThickness="1"
+                WidthRequest="320"
+                HorizontalOptions="End"
+                VerticalOptions="Center"
+                Margin="0,0,24,0"
+                TranslationX="340">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="24,0,0,24" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.15" Offset="-8,0" Radius="32" />
+            </Border.Shadow>
+            
+            <ScrollView>
+                <StackLayout Spacing="16" Padding="20">
+                    <!-- Header boussole -->
+                    <StackLayout Orientation="Horizontal" 
+                                 HorizontalOptions="Center" 
+                                 Spacing="12">
+                        <Label Text="🧭" FontSize="24" />
+                        <Label Text="Boussole Interactive" 
+                               FontSize="18" 
+                               FontAttributes="Bold"
+                               TextColor="#1F2937" />
+                        <Button Text="✕"
+                                FontSize="16"
+                                BackgroundColor="Transparent"
+                                TextColor="#666"
+                                WidthRequest="32"
+                                HeightRequest="32"
+                                Clicked="OnCloseCompassPanel" />
+                    </StackLayout>
+
+                    <!-- ✅ AJOUT PRINCIPAL: La boussole ici ! -->
+                    <views:VisualCompassView />
+
+                    <!-- Vue cardinale compacte -->
+                    <views:CardinalPlacesView 
+                        Places="{Binding Places}" 
+                        UserLocation="{Binding CurrentLocationCoords}"
+                        IsVisible="{Binding Places.Count, Converter={StaticResource IsNotNullConverter}}" />
+                </StackLayout>
+            </ScrollView>
+        </Border>
+
         <!-- 🎛️ PANNEAU DE RECHERCHE MODERNE -->
         <Border x:Name="SearchPanel"
                 BackgroundColor="#F8F9FA"
@@ -225,7 +274,7 @@
             </StackLayout>
         </Border>
 
-        <!-- 📍 PANNEAU LIEUX MODERNE -->
+        <!-- 📍 PANNEAU LIEUX MODERNE (conservé tel quel) -->
         <Border x:Name="PlacesPanel"
                 BackgroundColor="#FFFFFF"
                 Stroke="Transparent"
@@ -371,6 +420,28 @@
                     BackgroundColor="Transparent"
                     TextColor="White"
                     Clicked="OnSearchToggleClicked" />
+        </Border>
+
+        <!-- ✅ NOUVEAU: Bouton Boussole Floating -->
+        <Border x:Name="CompassToggleButtonFrame"
+                BackgroundColor="#9B59B6"
+                WidthRequest="64"
+                HeightRequest="64"
+                HorizontalOptions="End"
+                VerticalOptions="Center"
+                Margin="0,0,24,0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="32" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="#9B59B6" Opacity="0.4" Offset="0,8" Radius="20" />
+            </Border.Shadow>
+            <Button x:Name="CompassToggleButton"
+                    Text="🧭"
+                    FontSize="24"
+                    BackgroundColor="Transparent"
+                    TextColor="White"
+                    Clicked="OnCompassToggleClicked" />
         </Border>
 
         <!-- Bouton Lieux Floating -->

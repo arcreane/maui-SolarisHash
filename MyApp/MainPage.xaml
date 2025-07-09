@@ -184,7 +184,21 @@
 
                 <!-- 🧭 Boussole Visuelle -->
                 <Frame Style="{StaticResource ModernCard}">
-                    <views:VisualCompassView />
+                    <StackLayout Spacing="16">
+                        <Label Text="🧭 Boussole Interactive" 
+                            FontSize="18" 
+                            FontAttributes="Bold"
+                            TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}" />
+                        
+                        <!-- ✅ AJOUT: Référence correcte à la vue boussole -->
+                        <views:VisualCompassView />
+                        
+                        <!-- Message d'information -->
+                        <Label Text="💡 Bougez votre téléphone pour voir la boussole en action !" 
+                            FontSize="12" 
+                            TextColor="{AppThemeBinding Light=#FF8C00, Dark=#FFB347}"
+                            HorizontalTextAlignment="Center" />
+                    </StackLayout>
                 </Frame>
 
                 <!-- 🗺️ Carte Interactive PRINCIPALE -->

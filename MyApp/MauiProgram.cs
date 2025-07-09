@@ -17,7 +17,6 @@ namespace MyApp
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // ✅ CORRECTION: Ordre d'enregistrement des services
             try
             {
                 // Services de base
@@ -27,6 +26,7 @@ namespace MyApp
                 
                 // ✅ NOUVEAU: Service cardinal AVANT OrientationService
                 builder.Services.AddSingleton<ICardinalDirectionService, CardinalDirectionService>();
+                builder.Services.AddSingleton<IOrientationService, OrientationService>();
                 
                 // Service d'orientation
                 builder.Services.AddSingleton<IOrientationService, OrientationService>();

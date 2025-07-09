@@ -1,4 +1,3 @@
-// ✅ VERSION MINIMALE GARANTIE DE FONCTIONNER
 using MyApp.Services;
 using Microsoft.Maui.Devices.Sensors;
 
@@ -16,40 +15,99 @@ namespace MyApp.Views
         
         private double _currentHeading = 0;
         private bool _isListening = false;
+        private IDispatcherTimer? _simulationTimer; // ✅ CORRECTION
 
         public VisualCompassView()
         {
             CreateSimpleCompass();
-            StartCompassUpdates();
+            // ✅ CORRECTION: Démarrer automatiquement
+            _ = Task.Run(async () => await StartCompassAsync());
         }
 
         private void CreateSimpleCompass()
         {
-            // Cercle de boussole simple
+            // Cercle de boussole avec directions cardinales
+            var compassGrid = new Grid
+            {
+                WidthRequest = 200,
+                HeightRequest = 200,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+
+            // Fond de la boussole
             _compassCircle = new Frame
             {
                 WidthRequest = 200,
                 HeightRequest = 200,
                 CornerRadius = 100,
-                BackgroundColor = Colors.LightGray,
-                BorderColor = Colors.DarkGray,
+                BackgroundColor = Color.FromRgb(240, 240, 255),
+                BorderColor = Colors.DarkBlue,
                 HasShadow = true,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center
             };
 
-            // Aiguille simple
+            // Points cardinaux
+            var northLabel = new Label
+            {
+                Text = "N",
+                FontSize = 16,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Colors.Red,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+            var southLabel = new Label
+            {
+                Text = "S",
+                FontSize = 16,
+                TextColor = Colors.Blue,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.End,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+
+            var eastLabel = new Label
+            {
+                Text = "E",
+                FontSize = 16,
+                TextColor = Colors.Green,
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(0, 0, 10, 0)
+            };
+
+            var westLabel = new Label
+            {
+                Text = "W",
+                FontSize = 16,
+                TextColor = Colors.Orange,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(10, 0, 0, 0)
+            };
+
+            // Aiguille de la boussole
             _needle = new Label
             {
                 Text = "▲",
-                FontSize = 40,
+                FontSize = 30,
                 TextColor = Colors.Red,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 Rotation = 0
             };
 
-            _compassCircle.Content = _needle;
+            // Assembler la boussole
+            compassGrid.Children.Add(_compassCircle);
+            compassGrid.Children.Add(northLabel);
+            compassGrid.Children.Add(southLabel);
+            compassGrid.Children.Add(eastLabel);
+            compassGrid.Children.Add(westLabel);
+            compassGrid.Children.Add(_needle);
 
             // Affichage des degrés
             _headingLabel = new Label
@@ -64,37 +122,56 @@ namespace MyApp.Views
             // Direction cardinale
             _directionLabel = new Label
             {
-                Text = "Nord",
+                Text = "Nord ⬆️",
                 FontSize = 18,
                 HorizontalTextAlignment = TextAlignment.Center,
-                TextColor = Colors.DarkBlue
+                TextColor = Colors.DarkBlue,
+                FontAttributes = FontAttributes.Bold
             };
 
             // Statut
             _statusLabel = new Label
             {
-                Text = "Boussole initialisée",
+                Text = "🧭 Initialisation de la boussole...",
                 FontSize = 14,
                 HorizontalTextAlignment = TextAlignment.Center,
                 TextColor = Colors.Green
             };
 
             // Boutons
+            var buttonGrid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitionCollection
+                {
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                },
+                ColumnSpacing = 8
+            };
+
             _startButton = new Button
             {
                 Text = "▶️ Démarrer",
                 BackgroundColor = Colors.Green,
-                TextColor = Colors.White
+                TextColor = Colors.White,
+                CornerRadius = 8,
+                FontSize = 14
             };
             _startButton.Clicked += OnStartClicked;
+            Grid.SetColumn(_startButton, 0);
+            buttonGrid.Children.Add(_startButton);
 
             _stopButton = new Button
             {
                 Text = "⏹️ Arrêter",
                 BackgroundColor = Colors.Red,
-                TextColor = Colors.White
+                TextColor = Colors.White,
+                CornerRadius = 8,
+                FontSize = 14
             };
             _stopButton.Clicked += OnStopClicked;
+            Grid.SetColumn(_stopButton, 1);
+            buttonGrid.Children.Add(_stopButton);
 
             // Layout principal
             var layout = new StackLayout
@@ -105,98 +182,148 @@ namespace MyApp.Views
                 {
                     new Label
                     {
-                        Text = "🧭 Boussole Simple",
+                        Text = "🧭 Boussole Interactive",
                         FontSize = 20,
                         FontAttributes = FontAttributes.Bold,
-                        HorizontalTextAlignment = TextAlignment.Center
+                        HorizontalTextAlignment = TextAlignment.Center,
+                        TextColor = Colors.DarkBlue
                     },
-                    _compassCircle,
+                    compassGrid,
                     _headingLabel,
                     _directionLabel,
                     _statusLabel,
-                    _startButton,
-                    _stopButton
+                    buttonGrid,
+                    new Frame
+                    {
+                        BackgroundColor = Color.FromRgb(255, 248, 220),
+                        BorderColor = Colors.Orange,
+                        CornerRadius = 8,
+                        Padding = 8,
+                        Content = new Label
+                        {
+                            Text = "💡 Pointez votre téléphone dans différentes directions pour voir la boussole bouger !",
+                            FontSize = 12,
+                            TextColor = Colors.DarkOrange,
+                            HorizontalTextAlignment = TextAlignment.Center
+                        }
+                    }
                 }
             };
 
-            Content = new Frame
-            {
-                Content = layout,
-                BackgroundColor = Colors.White,
-                BorderColor = Colors.Gray,
-                CornerRadius = 16,
-                HasShadow = true,
-                Padding = 0
-            };
+            Content = layout;
         }
 
-        private async void StartCompassUpdates()
+        // ✅ CORRECTION: Méthode async pour le démarrage
+        private async Task StartCompassAsync()
         {
             try
             {
-                // Simuler une boussole qui fonctionne avec timer
-                var timer = Application.Current?.Dispatcher.CreateTimer();
-                if (timer != null)
+                await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    timer.Interval = TimeSpan.FromMilliseconds(500);
-                    timer.Tick += (s, e) =>
-                    {
-                        if (_isListening)
-                        {
-                            // Simuler un changement de direction (pour test)
-                            _currentHeading += 1;
-                            if (_currentHeading >= 360) _currentHeading = 0;
-                            
-                            UpdateCompassDisplay(_currentHeading);
-                        }
-                    };
-                    timer.Start();
+                    _statusLabel.Text = "🔍 Test des capteurs...";
+                    _statusLabel.TextColor = Colors.Orange;
+                });
+
+                // Attendre un peu pour que l'UI soit prête
+                await Task.Delay(1000);
+
+                // Essayer les vrais capteurs
+                if (Magnetometer.Default.IsSupported)
+                {
+                    await StartRealCompassAsync();
+                }
+                else
+                {
+                    await StartSimulationModeAsync();
                 }
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Erreur timer: {ex.Message}";
-                _statusLabel.TextColor = Colors.Red;
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _statusLabel.Text = $"❌ Erreur: {ex.Message}";
+                    _statusLabel.TextColor = Colors.Red;
+                });
+                
+                // Fallback sur simulation
+                await StartSimulationModeAsync();
             }
         }
 
-        private async void OnStartClicked(object sender, EventArgs e)
+        private async Task StartRealCompassAsync()
         {
             try
             {
-                _statusLabel.Text = "Démarrage des capteurs...";
-                _statusLabel.TextColor = Colors.Orange;
-
-                // Essayer de démarrer les vrais capteurs
-                if (Magnetometer.Default.IsSupported)
+                await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     Magnetometer.Default.ReadingChanged += OnMagnetometerChanged;
                     Magnetometer.Default.Start(SensorSpeed.UI);
                     _isListening = true;
                     _statusLabel.Text = "✅ Magnétomètre actif";
                     _statusLabel.TextColor = Colors.Green;
-                }
-                else
-                {
-                    // Fallback: mode simulation
-                    _isListening = true;
-                    _statusLabel.Text = "🔄 Mode simulation (pas de capteur)";
-                    _statusLabel.TextColor = Colors.Blue;
-                }
+                });
+
+                System.Diagnostics.Debug.WriteLine("🧭 Magnétomètre démarré");
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"❌ Erreur: {ex.Message}";
-                _statusLabel.TextColor = Colors.Red;
-                
-                // Mode simulation en cas d'erreur
-                _isListening = true;
-                _statusLabel.Text = "🔄 Mode simulation forcé";
-                _statusLabel.TextColor = Colors.Orange;
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur magnétomètre: {ex.Message}");
+                await StartSimulationModeAsync();
             }
         }
 
-        private async void OnStopClicked(object sender, EventArgs e)
+        private async Task StartSimulationModeAsync()
+        {
+            try
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _isListening = true;
+                    _statusLabel.Text = "🔄 Mode simulation (boussole virtuelle)";
+                    _statusLabel.TextColor = Colors.Blue;
+
+                    // ✅ CORRECTION: Utiliser Dispatcher.CreateTimer correctement
+                    _simulationTimer = Dispatcher.CreateTimer();
+                    _simulationTimer.Interval = TimeSpan.FromMilliseconds(1000);
+                    _simulationTimer.Tick += OnSimulationTick;
+                    _simulationTimer.Start();
+                });
+
+                System.Diagnostics.Debug.WriteLine("🧭 Mode simulation démarré");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur simulation: {ex.Message}");
+                
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _statusLabel.Text = $"❌ Erreur complète: {ex.Message}";
+                    _statusLabel.TextColor = Colors.Red;
+                });
+            }
+        }
+
+        private void OnSimulationTick(object? sender, EventArgs e)
+        {
+            if (_isListening)
+            {
+                // Simulation d'une rotation lente
+                _currentHeading += 5;
+                if (_currentHeading >= 360) _currentHeading = 0;
+                
+                UpdateCompassDisplay(_currentHeading);
+            }
+        }
+
+        private async void OnStartClicked(object? sender, EventArgs e)
+        {
+            if (!_isListening)
+            {
+                await StartCompassAsync();
+            }
+        }
+
+        private async void OnStopClicked(object? sender, EventArgs e)
         {
             try
             {
@@ -206,28 +333,39 @@ namespace MyApp.Views
                     Magnetometer.Default.ReadingChanged -= OnMagnetometerChanged;
                 }
                 
-                _isListening = false;
-                _statusLabel.Text = "🔴 Boussole arrêtée";
-                _statusLabel.TextColor = Colors.Gray;
+                _simulationTimer?.Stop();
+                _simulationTimer = null;
                 
-                // Remettre au nord
-                UpdateCompassDisplay(0);
+                _isListening = false;
+                
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _statusLabel.Text = "🔴 Boussole arrêtée";
+                    _statusLabel.TextColor = Colors.Gray;
+                    
+                    // Remettre au nord
+                    UpdateCompassDisplay(0);
+                });
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"❌ Erreur arrêt: {ex.Message}";
-                _statusLabel.TextColor = Colors.Red;
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _statusLabel.Text = $"❌ Erreur arrêt: {ex.Message}";
+                    _statusLabel.TextColor = Colors.Red;
+                });
             }
         }
 
-        private void OnMagnetometerChanged(object sender, MagnetometerChangedEventArgs e)
+        private void OnMagnetometerChanged(object? sender, MagnetometerChangedEventArgs e)
         {
             try
             {
-                // Calcul simple de la direction
+                // Calcul de la direction magnétique
                 var heading = Math.Atan2(e.Reading.MagneticField.Y, e.Reading.MagneticField.X) * (180.0 / Math.PI);
                 if (heading < 0) heading += 360;
 
+                // ✅ CORRECTION: Toujours utiliser MainThread
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     UpdateCompassDisplay(heading);
@@ -235,11 +373,7 @@ namespace MyApp.Views
             }
             catch (Exception ex)
             {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    _statusLabel.Text = $"❌ Erreur capteur: {ex.Message}";
-                    _statusLabel.TextColor = Colors.Red;
-                });
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur capteur: {ex.Message}");
             }
         }
 
@@ -256,11 +390,11 @@ namespace MyApp.Views
                 // Rotation de l'aiguille
                 _needle.Rotation = heading;
 
-                Console.WriteLine($"🧭 Boussole: {heading:F0}° - {GetDirectionName(heading)}");
+                System.Diagnostics.Debug.WriteLine($"🧭 Boussole mise à jour: {heading:F0}° - {GetDirectionName(heading)}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur UpdateCompassDisplay: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur UpdateCompassDisplay: {ex.Message}");
             }
         }
 
@@ -284,6 +418,7 @@ namespace MyApp.Views
             };
         }
 
+        // ✅ AJOUT: Nettoyage proper
         protected override void OnHandlerChanged()
         {
             base.OnHandlerChanged();
@@ -297,11 +432,14 @@ namespace MyApp.Views
                         Magnetometer.Default.Stop();
                         Magnetometer.Default.ReadingChanged -= OnMagnetometerChanged;
                     }
+                    
+                    _simulationTimer?.Stop();
+                    _simulationTimer = null;
                     _isListening = false;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Erreur cleanup: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"❌ Erreur cleanup: {ex.Message}");
                 }
             }
         }

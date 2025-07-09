@@ -7,16 +7,17 @@ namespace MyApp
         private readonly MainPageViewModel _viewModel;
         private bool _isSearchPanelVisible = false;
         private bool _isPlacesPanelVisible = false;
+        private bool _isCompassPanelVisible = false; // ✅ NOUVEAU
 
         public MapPage(MainPageViewModel viewModel)
         {
             InitializeComponent();
             _viewModel = viewModel;
             BindingContext = _viewModel;
-            
+
             // Animations d'entrée
             InitializeAnimations();
-            
+
             // Lancer automatiquement la recherche
             Loaded += OnPageLoaded;
         }
@@ -29,7 +30,10 @@ namespace MyApp
             // Boutons flottants entrent avec rotation
             SearchToggleButtonFrame.Scale = 0;
             SearchToggleButtonFrame.Rotation = 180;
-            
+
+            CompassToggleButtonFrame.Scale = 0; // ✅ NOUVEAU
+            CompassToggleButtonFrame.Rotation = 180; // ✅ NOUVEAU
+
             PlacesToggleButtonFrame.Scale = 0;
             PlacesToggleButtonFrame.Rotation = -180;
         }
@@ -40,7 +44,7 @@ namespace MyApp
             {
                 // ✅ SOLUTION: Lancer les animations en premier pour que l'UI soit responsive
                 var animationTask = AnimateEntranceAsync();
-                
+
                 // ✅ CORRECTION: Lancer le chargement en arrière-plan de manière thread-safe
                 var loadingTask = Task.Run(async () =>
                 {
@@ -60,10 +64,10 @@ namespace MyApp
                         System.Diagnostics.Debug.WriteLine($"❌ Erreur LoadPlaces: {ex.Message}");
                     }
                 });
-                
+
                 // Attendre que les animations soient terminées
                 await animationTask;
-                
+
                 // Optionnel: Attendre que le chargement soit fini aussi
                 // await loadingTask;
             }
@@ -82,7 +86,7 @@ namespace MyApp
                 {
                     // ✅ Déplacer temporairement pour l'animation
                     HeaderCard.TranslationY = -50;
-                    
+
                     // Header glisse du haut avec rebond
                     var headerTask = Task.WhenAll(
                         HeaderCard.TranslateTo(0, 0, 800, Easing.BounceOut),
@@ -91,10 +95,12 @@ namespace MyApp
 
                     // Attendre un peu puis animer les boutons
                     await Task.Delay(300);
-                    
+
                     var buttonsTask = Task.WhenAll(
                         SearchToggleButtonFrame.ScaleTo(1, 600, Easing.BounceOut),
                         SearchToggleButtonFrame.RotateTo(0, 600, Easing.CubicOut),
+                        CompassToggleButtonFrame.ScaleTo(1, 600, Easing.BounceOut), // ✅ NOUVEAU
+                        CompassToggleButtonFrame.RotateTo(0, 600, Easing.CubicOut), // ✅ NOUVEAU
                         PlacesToggleButtonFrame.ScaleTo(1, 600, Easing.BounceOut),
                         PlacesToggleButtonFrame.RotateTo(0, 600, Easing.CubicOut)
                     );
@@ -125,7 +131,7 @@ namespace MyApp
                             DarkOverlay.FadeTo(0.5, 300),
                             SearchPanel.TranslateTo(0, 0, 400, Easing.CubicOut)
                         );
-                        
+
                         // Animation du bouton
                         SearchToggleButton.Text = "✕";
                         await SearchToggleButtonFrame.ScaleTo(1.1, 100);
@@ -139,7 +145,7 @@ namespace MyApp
                             SearchPanel.TranslateTo(0, 400, 400, Easing.CubicIn)
                         );
                         DarkOverlay.IsVisible = false;
-                        
+
                         SearchToggleButton.Text = "⚙️";
                         await SearchToggleButtonFrame.RotateTo(360, 300);
                         SearchToggleButtonFrame.Rotation = 0;
@@ -149,6 +155,75 @@ namespace MyApp
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Erreur animation search: {ex.Message}");
+            }
+        }
+
+        // ✅ NOUVELLE MÉTHODE: Gestion du panneau boussole
+        private async void OnCompassToggleClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    _isCompassPanelVisible = !_isCompassPanelVisible;
+
+                    if (_isCompassPanelVisible)
+                    {
+                        // Afficher l'overlay et le panneau
+                        DarkOverlay.IsVisible = true;
+                        await Task.WhenAll(
+                            DarkOverlay.FadeTo(0.3, 300),
+                            CompassPanel.TranslateTo(0, 0, 400, Easing.CubicOut)
+                        );
+
+                        CompassToggleButton.Text = "✕";
+                        await CompassToggleButtonFrame.ScaleTo(1.1, 100);
+                        await CompassToggleButtonFrame.ScaleTo(1, 100);
+                    }
+                    else
+                    {
+                        // Fermer avec style
+                        await Task.WhenAll(
+                            DarkOverlay.FadeTo(0, 300),
+                            CompassPanel.TranslateTo(340, 0, 400, Easing.CubicIn)
+                        );
+                        DarkOverlay.IsVisible = false;
+
+                        CompassToggleButton.Text = "🧭";
+                        await CompassToggleButtonFrame.RotateTo(360, 300);
+                        CompassToggleButtonFrame.Rotation = 0;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur animation compass: {ex.Message}");
+            }
+        }
+
+        // ✅ NOUVELLE MÉTHODE: Fermer le panneau boussole
+        private async void OnCloseCompassPanel(object? sender, EventArgs e)
+        {
+            try
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    _isCompassPanelVisible = false;
+
+                    await Task.WhenAll(
+                        DarkOverlay.FadeTo(0, 300),
+                        CompassPanel.TranslateTo(340, 0, 400, Easing.CubicIn)
+                    );
+                    DarkOverlay.IsVisible = false;
+
+                    CompassToggleButton.Text = "🧭";
+                    await CompassToggleButtonFrame.RotateTo(360, 300);
+                    CompassToggleButtonFrame.Rotation = 0;
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur fermeture compass: {ex.Message}");
             }
         }
 
@@ -169,7 +244,7 @@ namespace MyApp
                             DarkOverlay.FadeTo(0.3, 300),
                             PlacesPanel.TranslateTo(0, 0, 400, Easing.CubicOut)
                         );
-                        
+
                         PlacesToggleButton.Text = "✕";
                         await PlacesToggleButtonFrame.ScaleTo(1.1, 100);
                         await PlacesToggleButtonFrame.ScaleTo(1, 100);
@@ -182,7 +257,7 @@ namespace MyApp
                             PlacesPanel.TranslateTo(-340, 0, 400, Easing.CubicIn)
                         );
                         DarkOverlay.IsVisible = false;
-                        
+
                         PlacesToggleButton.Text = "📍";
                         await PlacesToggleButtonFrame.RotateTo(-360, 300);
                         PlacesToggleButtonFrame.Rotation = 0;
@@ -203,13 +278,13 @@ namespace MyApp
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     _isPlacesPanelVisible = false;
-                    
+
                     await Task.WhenAll(
                         DarkOverlay.FadeTo(0, 300),
                         PlacesPanel.TranslateTo(-340, 0, 400, Easing.CubicIn)
                     );
                     DarkOverlay.IsVisible = false;
-                    
+
                     PlacesToggleButton.Text = "📍";
                     await PlacesToggleButtonFrame.RotateTo(-360, 300);
                     PlacesToggleButtonFrame.Rotation = 0;
@@ -231,6 +306,10 @@ namespace MyApp
             if (_isPlacesPanelVisible)
             {
                 OnClosePlacesPanel(sender, e);
+            }
+            if (_isCompassPanelVisible) // ✅ NOUVEAU
+            {
+                OnCloseCompassPanel(sender, e);
             }
         }
 
