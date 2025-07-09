@@ -17,27 +17,39 @@ namespace MyApp
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Services
-            builder.Services.AddSingleton<IPlaceService, RobustHttpService>();
-            builder.Services.AddSingleton<ILocationService, SamsungLocationService>();
-            builder.Services.AddSingleton<ISamsungSensorService, SamsungSensorService>();
-            builder.Services.AddSingleton<IOrientationService>(serviceProvider =>
+            // ✅ CORRECTION: Ordre d'enregistrement des services
+            try
             {
-                return new OrientationService();
-            });
+                // Services de base
+                builder.Services.AddSingleton<IPlaceService, RobustHttpService>();
+                builder.Services.AddSingleton<ILocationService, SamsungLocationService>();
+                builder.Services.AddSingleton<ISamsungSensorService, SamsungSensorService>();
+                
+                // ✅ NOUVEAU: Service cardinal AVANT OrientationService
+                builder.Services.AddSingleton<ICardinalDirectionService, CardinalDirectionService>();
+                
+                // Service d'orientation
+                builder.Services.AddSingleton<IOrientationService, OrientationService>();
 
-            // ViewModels
-            builder.Services.AddTransient<MainPageViewModel>();
+                // ViewModels
+                builder.Services.AddTransient<MainPageViewModel>();
 
-            // Pages
-            builder.Services.AddTransient<SplashPage>();
-            builder.Services.AddTransient<MapPage>();
-            builder.Services.AddTransient<MainPage>(); // Garde pour compatibilité
+                // Pages
+                builder.Services.AddTransient<SplashPage>();
+                builder.Services.AddTransient<MapPage>();
+                builder.Services.AddTransient<MainPage>();
+
+                Console.WriteLine("✅ Tous les services enregistrés avec succès");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erreur enregistrement services: {ex.Message}");
+            }
 
 #if DEBUG
             builder.Logging.AddDebug();
             builder.Logging.SetMinimumLevel(LogLevel.Debug);
-            Console.WriteLine("🚀 TravelBuddy avec Splash + Carte Full-Screen");
+            Console.WriteLine("🚀 TravelBuddy avec Boussole + Disposition Cardinale");
 #endif
 
             return builder.Build();

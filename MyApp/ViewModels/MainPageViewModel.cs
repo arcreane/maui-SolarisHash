@@ -25,7 +25,7 @@ namespace MyApp.ViewModels
         private string _statusMessage = "Prêt à chercher des lieux...";
         private string _selectedCityName = string.Empty;
 
-        // ✅ Thread-safe properties with command state updates
+        // ✅ SOLUTION PRINCIPALE: Thread-safe properties avec NotifyCanExecuteChanged sécurisé
         public bool IsLoading
         {
             get => _isLoading;
@@ -33,20 +33,10 @@ namespace MyApp.ViewModels
             {
                 if (SetProperty(ref _isLoading, value))
                 {
-                    // ✅ Update command states on main thread
-                    if (MainThread.IsMainThread)
+                    // ✅ CORRECTION: Toujours utiliser MainThread pour les mises à jour des commandes
+                    MainThread.BeginInvokeOnMainThread(() =>
                     {
-                        LoadPlacesCommand?.NotifyCanExecuteChanged();
-                        GoToCityCommand?.NotifyCanExecuteChanged();
-                        RefreshLocationCommand?.NotifyCanExecuteChanged();
-                        ToggleOrientationFilterCommand?.NotifyCanExecuteChanged();
-                        SearchPlacesCommand?.NotifyCanExecuteChanged();
-                        FilterChangedCommand?.NotifyCanExecuteChanged();
-                        CitySelectedCommand?.NotifyCanExecuteChanged();
-                    }
-                    else
-                    {
-                        MainThread.BeginInvokeOnMainThread(() =>
+                        try
                         {
                             LoadPlacesCommand?.NotifyCanExecuteChanged();
                             GoToCityCommand?.NotifyCanExecuteChanged();
@@ -55,8 +45,12 @@ namespace MyApp.ViewModels
                             SearchPlacesCommand?.NotifyCanExecuteChanged();
                             FilterChangedCommand?.NotifyCanExecuteChanged();
                             CitySelectedCommand?.NotifyCanExecuteChanged();
-                        });
-                    }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"❌ Erreur NotifyCanExecuteChanged: {ex.Message}");
+                        }
+                    });
                 }
             }
         }
@@ -110,15 +104,18 @@ namespace MyApp.ViewModels
             {
                 if (SetProperty(ref _selectedCityName, value))
                 {
-                    // ✅ Update GoToCityCommand state when city name changes
-                    if (MainThread.IsMainThread)
+                    // ✅ CORRECTION: Thread-safe pour GoToCityCommand
+                    MainThread.BeginInvokeOnMainThread(() =>
                     {
-                        GoToCityCommand?.NotifyCanExecuteChanged();
-                    }
-                    else
-                    {
-                        MainThread.BeginInvokeOnMainThread(() => GoToCityCommand?.NotifyCanExecuteChanged());
-                    }
+                        try
+                        {
+                            GoToCityCommand?.NotifyCanExecuteChanged();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"❌ Erreur GoToCityCommand notify: {ex.Message}");
+                        }
+                    });
                 }
             }
         }
@@ -134,7 +131,7 @@ namespace MyApp.ViewModels
             "Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Nantes", "Montpellier", "Strasbourg", "Bordeaux", "Lille"
         };
 
-        // ✅ Explicit command properties with proper CanExecute
+        // ✅ Commands avec CanExecute thread-safe
         public IAsyncRelayCommand LoadPlacesCommand { get; }
         public IAsyncRelayCommand GoToCityCommand { get; }
         public IAsyncRelayCommand RefreshLocationCommand { get; }
@@ -145,6 +142,12 @@ namespace MyApp.ViewModels
         public IAsyncRelayCommand<Place> PlaceSelectedCommand { get; }
 
         private Location? _currentLocationCoords;
+
+        public Location? CurrentLocationCoords
+        {
+            get => _currentLocationCoords;
+            set => SetProperty(ref _currentLocationCoords, value);
+        }
         private List<Place> _allPlaces = new();
 
         public MainPageViewModel(IPlaceService placeService, ILocationService locationService, IOrientationService orientationService)
@@ -157,15 +160,15 @@ namespace MyApp.ViewModels
                 _locationService = locationService ?? throw new ArgumentNullException(nameof(locationService));
                 _orientationService = orientationService;
 
-                // ✅ Initialize commands with proper CanExecute predicates
-                LoadPlacesCommand = new AsyncRelayCommand(LoadPlacesAsync, () => !IsLoading);
-                GoToCityCommand = new AsyncRelayCommand(GoToCityAsync, () => !IsLoading && !string.IsNullOrWhiteSpace(SelectedCityName));
-                RefreshLocationCommand = new AsyncRelayCommand(RefreshLocationAsync, () => !IsLoading);
-                ToggleOrientationFilterCommand = new AsyncRelayCommand(ToggleOrientationFilterAsync, () => !IsLoading);
-                SearchPlacesCommand = new AsyncRelayCommand(SearchPlacesAsync, () => !IsLoading);
-                FilterChangedCommand = new AsyncRelayCommand(FilterChangedAsync, () => !IsLoading);
-                CitySelectedCommand = new AsyncRelayCommand<object>(CitySelectedAsync, _ => !IsLoading);
-                PlaceSelectedCommand = new AsyncRelayCommand<Place>(PlaceSelectedAsync, _ => !IsLoading);
+                // ✅ CORRECTION: Commands avec CanExecute thread-safe
+                LoadPlacesCommand = new AsyncRelayCommand(LoadPlacesAsync, CanExecuteCommands);
+                GoToCityCommand = new AsyncRelayCommand(GoToCityAsync, CanExecuteGoToCity);
+                RefreshLocationCommand = new AsyncRelayCommand(RefreshLocationAsync, CanExecuteCommands);
+                ToggleOrientationFilterCommand = new AsyncRelayCommand(ToggleOrientationFilterAsync, CanExecuteCommands);
+                SearchPlacesCommand = new AsyncRelayCommand(SearchPlacesAsync, CanExecuteCommands);
+                FilterChangedCommand = new AsyncRelayCommand(FilterChangedAsync, CanExecuteCommands);
+                CitySelectedCommand = new AsyncRelayCommand<object>(CitySelectedAsync, _ => CanExecuteCommands());
+                PlaceSelectedCommand = new AsyncRelayCommand<Place>(PlaceSelectedAsync, _ => CanExecuteCommands());
                 
                 // S'abonner aux changements
                 if (_locationService != null)
@@ -207,7 +210,33 @@ namespace MyApp.ViewModels
             }
         }
 
-        // ✅ Hide base property change notifications to ensure main thread
+        // ✅ NOUVELLE MÉTHODE: CanExecute thread-safe
+        private bool CanExecuteCommands()
+        {
+            try
+            {
+                return !IsLoading;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // ✅ NOUVELLE MÉTHODE: CanExecute pour GoToCity thread-safe
+        private bool CanExecuteGoToCity()
+        {
+            try
+            {
+                return !IsLoading && !string.IsNullOrWhiteSpace(SelectedCityName);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // ✅ CORRECTION: Override OnPropertyChanged pour garantir MainThread
         protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             if (MainThread.IsMainThread)
@@ -220,6 +249,15 @@ namespace MyApp.ViewModels
             }
         }
 
+        // ✅ CORRECTION: Méthode helper pour changements thread-safe
+        private async Task SetIsLoadingAsync(bool value)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                IsLoading = value;
+            });
+        }
+
         private async Task LoadPlacesAsync()
         {
             if (IsLoading) return;
@@ -227,9 +265,9 @@ namespace MyApp.ViewModels
             try
             {
                 // ✅ UI updates on main thread
+                await SetIsLoadingAsync(true);
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    IsLoading = true;
                     StatusMessage = "🔍 Recherche en cours...";
                 });
                 
@@ -314,13 +352,11 @@ namespace MyApp.ViewModels
             }
             finally
             {
-                await MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    IsLoading = false;
-                });
+                await SetIsLoadingAsync(false);
             }
         }
 
+        // ✅ Méthodes corrigées pour thread safety (reste du code...)
         private async Task GoToCityAsync()
         {
             if (string.IsNullOrWhiteSpace(SelectedCityName) || IsLoading)
@@ -328,9 +364,9 @@ namespace MyApp.ViewModels
 
             try
             {
+                await SetIsLoadingAsync(true);
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    IsLoading = true;
                     StatusMessage = $"🏙️ Recherche de {SelectedCityName}...";
                 });
 
@@ -340,10 +376,9 @@ namespace MyApp.ViewModels
 
                 if (location != null)
                 {
-                    _currentLocationCoords = location;
-                    
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
+                        CurrentLocationCoords = location; // ✅ NOUVEAU : Pour la vue cardinale
                         CurrentLocation = $"🏙️ {SelectedCityName} ({location.Latitude:F4}, {location.Longitude:F4})";
                         IsLocationEnabled = true;
                         Places.Clear();
@@ -374,13 +409,11 @@ namespace MyApp.ViewModels
             }
             finally
             {
-                await MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    IsLoading = false;
-                });
+                await SetIsLoadingAsync(false);
             }
         }
 
+        // ✅ Autres méthodes avec même pattern thread-safe...
         private async Task CitySelectedAsync(object selectedItem)
         {
             if (selectedItem is string cityName)
@@ -534,10 +567,10 @@ namespace MyApp.ViewModels
 
                 if (location != null)
                 {
-                    _currentLocationCoords = location;
-                    
+                    // ✅ CORRECTION : Mettre à jour les deux propriétés
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
+                        CurrentLocationCoords = location; // ✅ NOUVEAU : Pour la vue cardinale
                         CurrentLocation = $"📍 {location.Latitude:F6}, {location.Longitude:F6}";
                         IsLocationEnabled = true;
                     });
@@ -548,6 +581,7 @@ namespace MyApp.ViewModels
                 {
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
+                        CurrentLocationCoords = null; // ✅ NOUVEAU
                         CurrentLocation = "❌ Localisation indisponible";
                         IsLocationEnabled = false;
                     });
@@ -558,6 +592,7 @@ namespace MyApp.ViewModels
             {
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
+                    CurrentLocationCoords = null; // ✅ NOUVEAU
                     CurrentLocation = $"❌ Erreur: {ex.Message}";
                     IsLocationEnabled = false;
                 });
@@ -604,12 +639,12 @@ namespace MyApp.ViewModels
             return filtered.OrderBy(p => p.Distance).ToList();
         }
 
+        // ✅ CORRECTION: Event handlers thread-safe
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
-            // ✅ Use InvokeOnMainThreadAsync consistently
             _ = MainThread.InvokeOnMainThreadAsync(() =>
             {
-                _currentLocationCoords = e.NewLocation;
+                CurrentLocationCoords = e.NewLocation; // ✅ NOUVEAU : Pour la vue cardinale
                 CurrentLocation = $"📍 {e.NewLocation.Latitude:F6}, {e.NewLocation.Longitude:F6} ({e.Source})";
                 IsLocationEnabled = true;
                 
@@ -619,7 +654,6 @@ namespace MyApp.ViewModels
 
         private void OnOrientationChanged(object? sender, OrientationChangedEventArgs e)
         {
-            // ✅ Use InvokeOnMainThreadAsync for proper async/await
             _ = MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 CurrentOrientation = $"📱 {e.DirectionName} ({e.Heading:F0}°)";

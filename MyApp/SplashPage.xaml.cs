@@ -28,7 +28,7 @@ namespace MyApp
                 // 1) initialisation des positions
                 InitializeAnimationPositions();
 
-                // 2) ✅ Démarrer les animations SANS CancellationToken
+                // 2) ✅ Démarrer les animations SANS CancellationToken mais thread-safe
                 var particleTask = AnimateParticles();
                 var dotsTask = AnimateLoadingDots();
 
@@ -48,7 +48,7 @@ namespace MyApp
                 }
                 catch (TimeoutException)
                 {
-                    Console.WriteLine("⚠️ Timeout lors de l'arrêt des animations");
+                    System.Diagnostics.Debug.WriteLine("⚠️ Timeout lors de l'arrêt des animations");
                 }
 
                 // 6) enfin, transition vers la MapPage
@@ -56,7 +56,7 @@ namespace MyApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur StartMagicalExperience: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur StartMagicalExperience: {ex.Message}");
                 _animationsRunning = false;
                 await Shell.Current.GoToAsync("//MapPage");
             }
@@ -66,41 +66,52 @@ namespace MyApp
         {
             try
             {
-                // Logo commence invisible et petit
-                if (LogoBorder != null)
+                // ✅ CORRECTION: S'assurer qu'on est sur le main thread pour les animations
+                MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    LogoBorder.Scale = 0;
-                    LogoBorder.Opacity = 0;
-                }
-                if (LogoIcon != null)
-                {
-                    LogoIcon.Rotation = -180;
-                }
+                    try
+                    {
+                        // Logo commence invisible et petit
+                        if (LogoBorder != null)
+                        {
+                            LogoBorder.Scale = 0;
+                            LogoBorder.Opacity = 0;
+                        }
+                        if (LogoIcon != null)
+                        {
+                            LogoIcon.Rotation = -180;
+                        }
 
-                // Titre vient du côté
-                if (TitleLabel != null)
-                {
-                    TitleLabel.TranslationX = -300;
-                    TitleLabel.Opacity = 0;
-                }
+                        // Titre vient du côté
+                        if (TitleLabel != null)
+                        {
+                            TitleLabel.TranslationX = -300;
+                            TitleLabel.Opacity = 0;
+                        }
 
-                // Sous-titre vient de l'autre côté
-                if (SubtitleLabel != null)
-                {
-                    SubtitleLabel.TranslationX = 300;
-                    SubtitleLabel.Opacity = 0;
-                }
+                        // Sous-titre vient de l'autre côté
+                        if (SubtitleLabel != null)
+                        {
+                            SubtitleLabel.TranslationX = 300;
+                            SubtitleLabel.Opacity = 0;
+                        }
 
-                // Loading stack invisible
-                if (LoadingStack != null)
-                {
-                    LoadingStack.TranslationY = 50;
-                    LoadingStack.Opacity = 0;
-                }
+                        // Loading stack invisible
+                        if (LoadingStack != null)
+                        {
+                            LoadingStack.TranslationY = 50;
+                            LoadingStack.Opacity = 0;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"❌ Erreur init animations: {ex.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur InitializeAnimationPositions: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur InitializeAnimationPositions: {ex.Message}");
             }
         }
 
@@ -113,16 +124,22 @@ namespace MyApp
                     if (!_animationsRunning)
                         break;
 
-                    var tasks = new List<Task>();
-                    if (Particle1 != null) tasks.Add(AnimateParticle(Particle1, 3000));
-                    if (Particle2 != null) tasks.Add(AnimateParticle(Particle2, 4000));
-                    if (Particle3 != null) tasks.Add(AnimateParticle(Particle3, 3500));
-                    if (Particle4 != null) tasks.Add(AnimateParticle(Particle4, 4500));
-
-                    if (tasks.Count > 0 && _animationsRunning)
+                    // ✅ CORRECTION: Animations thread-safe
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        await Task.WhenAll(tasks);
-                    }
+                        if (!_animationsRunning) return;
+
+                        var tasks = new List<Task>();
+                        if (Particle1 != null) tasks.Add(AnimateParticle(Particle1, 3000));
+                        if (Particle2 != null) tasks.Add(AnimateParticle(Particle2, 4000));
+                        if (Particle3 != null) tasks.Add(AnimateParticle(Particle3, 3500));
+                        if (Particle4 != null) tasks.Add(AnimateParticle(Particle4, 4500));
+
+                        if (tasks.Count > 0 && _animationsRunning)
+                        {
+                            await Task.WhenAll(tasks);
+                        }
+                    });
                     
                     if (_animationsRunning)
                     {
@@ -132,7 +149,7 @@ namespace MyApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur AnimateParticles: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur AnimateParticles: {ex.Message}");
             }
         }
 
@@ -143,24 +160,20 @@ namespace MyApp
                 if (!_animationsRunning || particle == null)
                     return;
 
-                // ✅ Ensure we're on the main thread for UI operations
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                {
-                    var actualDuration = _animationsRunning ? Math.Min(duration, 1000u) : 0u;
+                var actualDuration = _animationsRunning ? Math.Min(duration, 1000u) : 0u;
 
-                    await Task.WhenAll(
-                        particle.TranslateTo(
-                            Random.Shared.Next(-50, 50), 
-                            Random.Shared.Next(-30, 30), 
-                            actualDuration, 
-                            Easing.SinInOut),
-                        particle.FadeTo(Random.Shared.NextDouble() * 0.5 + 0.3, actualDuration)
-                    );
-                });
+                await Task.WhenAll(
+                    particle.TranslateTo(
+                        Random.Shared.Next(-50, 50), 
+                        Random.Shared.Next(-30, 30), 
+                        actualDuration, 
+                        Easing.SinInOut),
+                    particle.FadeTo(Random.Shared.NextDouble() * 0.5 + 0.3, actualDuration)
+                );
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur AnimateParticle: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur AnimateParticle: {ex.Message}");
             }
         }
 
@@ -168,53 +181,57 @@ namespace MyApp
         {
             try
             {
-                // 1. Logo apparaît avec style
-                var logoTasks = new List<Task>();
-                if (LogoBorder != null)
+                // ✅ CORRECTION: Animations thread-safe
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    logoTasks.Add(LogoBorder.ScaleTo(1, 1000, Easing.BounceOut));
-                    logoTasks.Add(LogoBorder.FadeTo(1, 800));
-                }
-                if (LogoIcon != null)
-                {
-                    logoTasks.Add(LogoIcon.RotateTo(0, 1000, Easing.BounceOut));
-                }
-                if (logoTasks.Count > 0)
-                    await Task.WhenAll(logoTasks);
+                    // 1. Logo apparaît avec style
+                    var logoTasks = new List<Task>();
+                    if (LogoBorder != null)
+                    {
+                        logoTasks.Add(LogoBorder.ScaleTo(1, 1000, Easing.BounceOut));
+                        logoTasks.Add(LogoBorder.FadeTo(1, 800));
+                    }
+                    if (LogoIcon != null)
+                    {
+                        logoTasks.Add(LogoIcon.RotateTo(0, 1000, Easing.BounceOut));
+                    }
+                    if (logoTasks.Count > 0)
+                        await Task.WhenAll(logoTasks);
 
-                // 2. Titre glisse en place
-                var titleTasks = new List<Task>();
-                if (TitleLabel != null)
-                {
-                    titleTasks.Add(TitleLabel.TranslateTo(0, 0, 600, Easing.CubicOut));
-                    titleTasks.Add(TitleLabel.FadeTo(1, 600));
-                }
-                if (titleTasks.Count > 0)
-                    await Task.WhenAll(titleTasks);
+                    // 2. Titre glisse en place
+                    var titleTasks = new List<Task>();
+                    if (TitleLabel != null)
+                    {
+                        titleTasks.Add(TitleLabel.TranslateTo(0, 0, 600, Easing.CubicOut));
+                        titleTasks.Add(TitleLabel.FadeTo(1, 600));
+                    }
+                    if (titleTasks.Count > 0)
+                        await Task.WhenAll(titleTasks);
 
-                // 3. Sous-titre suit
-                var subtitleTasks = new List<Task>();
-                if (SubtitleLabel != null)
-                {
-                    subtitleTasks.Add(SubtitleLabel.TranslateTo(0, 0, 600, Easing.CubicOut));
-                    subtitleTasks.Add(SubtitleLabel.FadeTo(1, 600));
-                }
-                if (subtitleTasks.Count > 0)
-                    await Task.WhenAll(subtitleTasks);
+                    // 3. Sous-titre suit
+                    var subtitleTasks = new List<Task>();
+                    if (SubtitleLabel != null)
+                    {
+                        subtitleTasks.Add(SubtitleLabel.TranslateTo(0, 0, 600, Easing.CubicOut));
+                        subtitleTasks.Add(SubtitleLabel.FadeTo(1, 600));
+                    }
+                    if (subtitleTasks.Count > 0)
+                        await Task.WhenAll(subtitleTasks);
 
-                // 4. Loading apparaît
-                var loadingTasks = new List<Task>();
-                if (LoadingStack != null)
-                {
-                    loadingTasks.Add(LoadingStack.TranslateTo(0, 0, 400, Easing.CubicOut));
-                    loadingTasks.Add(LoadingStack.FadeTo(1, 400));
-                }
-                if (loadingTasks.Count > 0)
-                    await Task.WhenAll(loadingTasks);
+                    // 4. Loading apparaît
+                    var loadingTasks = new List<Task>();
+                    if (LoadingStack != null)
+                    {
+                        loadingTasks.Add(LoadingStack.TranslateTo(0, 0, 400, Easing.CubicOut));
+                        loadingTasks.Add(LoadingStack.FadeTo(1, 400));
+                    }
+                    if (loadingTasks.Count > 0)
+                        await Task.WhenAll(loadingTasks);
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur AnimateEntrance: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur AnimateEntrance: {ex.Message}");
             }
         }
 
@@ -222,49 +239,52 @@ namespace MyApp
         {
             try
             {
-                var dots = new[] { Dot1, Dot2, Dot3, Dot4 }.Where(d => d != null).ToArray();
-                
-                while (_animationsRunning)
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    if (!_animationsRunning)
-                        break;
-
-                    for (int i = 0; i < dots.Length; i++)
+                    var dots = new[] { Dot1, Dot2, Dot3, Dot4 }.Where(d => d != null).ToArray();
+                    
+                    while (_animationsRunning)
                     {
                         if (!_animationsRunning)
                             break;
 
-                        var dot = dots[i];
-                        if (dot == null) continue;
-                        
-                        await Task.WhenAll(
-                            dot.FadeTo(1, 150),
-                            dot.ScaleTo(1.3, 150)
-                        );
-                        
-                        if (!_animationsRunning)
-                            break;
-                        
-                        await Task.WhenAll(
-                            dot.FadeTo(0.4, 150),
-                            dot.ScaleTo(1, 150)
-                        );
+                        for (int i = 0; i < dots.Length; i++)
+                        {
+                            if (!_animationsRunning)
+                                break;
 
+                            var dot = dots[i];
+                            if (dot == null) continue;
+                            
+                            await Task.WhenAll(
+                                dot.FadeTo(1, 150),
+                                dot.ScaleTo(1.3, 150)
+                            );
+                            
+                            if (!_animationsRunning)
+                                break;
+                            
+                            await Task.WhenAll(
+                                dot.FadeTo(0.4, 150),
+                                dot.ScaleTo(1, 150)
+                            );
+
+                            if (_animationsRunning)
+                            {
+                                await Task.Delay(100);
+                            }
+                        }
+                        
                         if (_animationsRunning)
                         {
-                            await Task.Delay(100);
+                            await Task.Delay(300);
                         }
                     }
-                    
-                    if (_animationsRunning)
-                    {
-                        await Task.Delay(300);
-                    }
-                }
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur AnimateLoadingDots: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur AnimateLoadingDots: {ex.Message}");
             }
         }
 
@@ -280,7 +300,7 @@ namespace MyApp
 
                 await UpdateStatus("📡 Connexion aux satellites...");
                 
-                // ✅ Background task for location services
+                // ✅ CORRECTION: Background task thread-safe pour les services de localisation
                 _ = Task.Run(async () => 
                 {
                     try
@@ -295,7 +315,7 @@ namespace MyApp
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"❌ Erreur préchargement location: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"❌ Erreur préchargement location: {ex.Message}");
                         
                         await MainThread.InvokeOnMainThreadAsync(async () =>
                         {
@@ -313,7 +333,7 @@ namespace MyApp
             catch (Exception ex)
             {
                 await UpdateStatus("⚡ Finalisation...");
-                Console.WriteLine($"❌ Erreur init: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur init: {ex.Message}");
                 await Task.Delay(500);
             }
         }
@@ -322,7 +342,7 @@ namespace MyApp
         {
             try
             {
-                // ✅ Always use InvokeOnMainThreadAsync for UI updates
+                // ✅ CORRECTION: Toujours utiliser MainThread pour les mises à jour UI
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     if (StatusLabel != null)
@@ -336,26 +356,7 @@ namespace MyApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur UpdateStatus: {ex.Message}");
-            }
-        }
-
-        private async Task UpdateStatusDirect(string message)
-        {
-            try
-            {
-                if (StatusLabel != null)
-                {
-                    StatusLabel.Text = message;
-
-                    // Petit effet de zoom sur le changement
-                    await StatusLabel.ScaleTo(1.05, 100);
-                    await StatusLabel.ScaleTo(1, 100);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Erreur UpdateStatusDirect: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur UpdateStatus: {ex.Message}");
             }
         }
 
@@ -366,36 +367,40 @@ namespace MyApp
                 // ✅ S'assurer que les animations sont arrêtées AVANT la sortie
                 _animationsRunning = false;
 
-                // Animation de sortie plus rapide
-                var exitTasks = new List<Task>();
-                
-                if (LogoBorder != null)
+                // ✅ CORRECTION: Animation de sortie thread-safe
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    exitTasks.Add(LogoBorder.ScaleTo(0.8, 300));
-                    exitTasks.Add(LogoBorder.FadeTo(0, 300));
-                }
-                if (LogoIcon != null)
-                {
-                    exitTasks.Add(LogoIcon.RotateTo(180, 300));
-                }
-                if (TitleLabel != null)
-                {
-                    exitTasks.Add(TitleLabel.TranslateTo(-300, 0, 300, Easing.CubicIn));
-                    exitTasks.Add(TitleLabel.FadeTo(0, 300));
-                }
-                if (SubtitleLabel != null)
-                {
-                    exitTasks.Add(SubtitleLabel.TranslateTo(300, 0, 300, Easing.CubicIn));
-                    exitTasks.Add(SubtitleLabel.FadeTo(0, 300));
-                }
-                if (LoadingStack != null)
-                {
-                    exitTasks.Add(LoadingStack.TranslateTo(0, 50, 300, Easing.CubicIn));
-                    exitTasks.Add(LoadingStack.FadeTo(0, 300));
-                }
+                    // Animation de sortie plus rapide
+                    var exitTasks = new List<Task>();
+                    
+                    if (LogoBorder != null)
+                    {
+                        exitTasks.Add(LogoBorder.ScaleTo(0.8, 300));
+                        exitTasks.Add(LogoBorder.FadeTo(0, 300));
+                    }
+                    if (LogoIcon != null)
+                    {
+                        exitTasks.Add(LogoIcon.RotateTo(180, 300));
+                    }
+                    if (TitleLabel != null)
+                    {
+                        exitTasks.Add(TitleLabel.TranslateTo(-300, 0, 300, Easing.CubicIn));
+                        exitTasks.Add(TitleLabel.FadeTo(0, 300));
+                    }
+                    if (SubtitleLabel != null)
+                    {
+                        exitTasks.Add(SubtitleLabel.TranslateTo(300, 0, 300, Easing.CubicIn));
+                        exitTasks.Add(SubtitleLabel.FadeTo(0, 300));
+                    }
+                    if (LoadingStack != null)
+                    {
+                        exitTasks.Add(LoadingStack.TranslateTo(0, 50, 300, Easing.CubicIn));
+                        exitTasks.Add(LoadingStack.FadeTo(0, 300));
+                    }
 
-                if (exitTasks.Count > 0)
-                    await Task.WhenAll(exitTasks);
+                    if (exitTasks.Count > 0)
+                        await Task.WhenAll(exitTasks);
+                });
 
                 // ✅ Petite pause pour s'assurer que tout est terminé
                 await Task.Delay(100);
@@ -405,7 +410,7 @@ namespace MyApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur navigation: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur navigation: {ex.Message}");
                 await Shell.Current.GoToAsync("//MapPage");
             }
         }

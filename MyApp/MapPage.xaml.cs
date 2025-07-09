@@ -41,19 +41,23 @@ namespace MyApp
                 // ✅ SOLUTION: Lancer les animations en premier pour que l'UI soit responsive
                 var animationTask = AnimateEntranceAsync();
                 
-                // ✅ Lancer le chargement en parallèle (pas en await)
+                // ✅ CORRECTION: Lancer le chargement en arrière-plan de manière thread-safe
                 var loadingTask = Task.Run(async () =>
                 {
                     try
                     {
-                        if (_viewModel.LoadPlacesCommand.CanExecute(null))
+                        // ✅ S'assurer que l'exécution de la commande se fait sur le main thread
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
                         {
-                            await _viewModel.LoadPlacesCommand.ExecuteAsync(null);
-                        }
+                            if (_viewModel.LoadPlacesCommand.CanExecute(null))
+                            {
+                                await _viewModel.LoadPlacesCommand.ExecuteAsync(null);
+                            }
+                        });
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"❌ Erreur LoadPlaces: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"❌ Erreur LoadPlaces: {ex.Message}");
                     }
                 });
                 
@@ -65,71 +69,86 @@ namespace MyApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur chargement: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur chargement: {ex.Message}");
             }
         }
 
         private async Task AnimateEntranceAsync()
         {
-            // ✅ Déplacer temporairement pour l'animation
-            HeaderCard.TranslationY = -50;
-            
-            // Header glisse du haut avec rebond
-            var headerTask = Task.WhenAll(
-                HeaderCard.TranslateTo(0, 0, 800, Easing.BounceOut),
-                HeaderCard.FadeTo(1, 600)
-            );
+            try
+            {
+                // ✅ S'assurer qu'on est sur le main thread pour les animations
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    // ✅ Déplacer temporairement pour l'animation
+                    HeaderCard.TranslationY = -50;
+                    
+                    // Header glisse du haut avec rebond
+                    var headerTask = Task.WhenAll(
+                        HeaderCard.TranslateTo(0, 0, 800, Easing.BounceOut),
+                        HeaderCard.FadeTo(1, 600)
+                    );
 
-            // Attendre un peu puis animer les boutons
-            await Task.Delay(300);
-            
-            var buttonsTask = Task.WhenAll(
-                SearchToggleButtonFrame.ScaleTo(1, 600, Easing.BounceOut),
-                SearchToggleButtonFrame.RotateTo(0, 600, Easing.CubicOut),
-                PlacesToggleButtonFrame.ScaleTo(1, 600, Easing.BounceOut),
-                PlacesToggleButtonFrame.RotateTo(0, 600, Easing.CubicOut)
-            );
+                    // Attendre un peu puis animer les boutons
+                    await Task.Delay(300);
+                    
+                    var buttonsTask = Task.WhenAll(
+                        SearchToggleButtonFrame.ScaleTo(1, 600, Easing.BounceOut),
+                        SearchToggleButtonFrame.RotateTo(0, 600, Easing.CubicOut),
+                        PlacesToggleButtonFrame.ScaleTo(1, 600, Easing.BounceOut),
+                        PlacesToggleButtonFrame.RotateTo(0, 600, Easing.CubicOut)
+                    );
 
-            await Task.WhenAll(headerTask, buttonsTask);
+                    await Task.WhenAll(headerTask, buttonsTask);
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur AnimateEntrance: {ex.Message}");
+            }
         }
 
         private async void OnSearchToggleClicked(object? sender, EventArgs e)
         {
             try
             {
-                _isSearchPanelVisible = !_isSearchPanelVisible;
+                // ✅ CORRECTION: S'assurer qu'on est sur le main thread
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    _isSearchPanelVisible = !_isSearchPanelVisible;
 
-                if (_isSearchPanelVisible)
-                {
-                    // Afficher l'overlay sombre
-                    DarkOverlay.IsVisible = true;
-                    await Task.WhenAll(
-                        DarkOverlay.FadeTo(0.5, 300),
-                        SearchPanel.TranslateTo(0, 0, 400, Easing.CubicOut)
-                    );
-                    
-                    // Animation du bouton
-                    SearchToggleButton.Text = "✕";
-                    await SearchToggleButtonFrame.ScaleTo(1.1, 100);
-                    await SearchToggleButtonFrame.ScaleTo(1, 100);
-                }
-                else
-                {
-                    // Fermer avec animation inverse
-                    await Task.WhenAll(
-                        DarkOverlay.FadeTo(0, 300),
-                        SearchPanel.TranslateTo(0, 400, 400, Easing.CubicIn)
-                    );
-                    DarkOverlay.IsVisible = false;
-                    
-                    SearchToggleButton.Text = "⚙️";
-                    await SearchToggleButtonFrame.RotateTo(360, 300);
-                    SearchToggleButtonFrame.Rotation = 0;
-                }
+                    if (_isSearchPanelVisible)
+                    {
+                        // Afficher l'overlay sombre
+                        DarkOverlay.IsVisible = true;
+                        await Task.WhenAll(
+                            DarkOverlay.FadeTo(0.5, 300),
+                            SearchPanel.TranslateTo(0, 0, 400, Easing.CubicOut)
+                        );
+                        
+                        // Animation du bouton
+                        SearchToggleButton.Text = "✕";
+                        await SearchToggleButtonFrame.ScaleTo(1.1, 100);
+                        await SearchToggleButtonFrame.ScaleTo(1, 100);
+                    }
+                    else
+                    {
+                        // Fermer avec animation inverse
+                        await Task.WhenAll(
+                            DarkOverlay.FadeTo(0, 300),
+                            SearchPanel.TranslateTo(0, 400, 400, Easing.CubicIn)
+                        );
+                        DarkOverlay.IsVisible = false;
+                        
+                        SearchToggleButton.Text = "⚙️";
+                        await SearchToggleButtonFrame.RotateTo(360, 300);
+                        SearchToggleButtonFrame.Rotation = 0;
+                    }
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur animation search: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur animation search: {ex.Message}");
             }
         }
 
@@ -137,24 +156,54 @@ namespace MyApp
         {
             try
             {
-                _isPlacesPanelVisible = !_isPlacesPanelVisible;
+                // ✅ CORRECTION: S'assurer qu'on est sur le main thread
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    _isPlacesPanelVisible = !_isPlacesPanelVisible;
 
-                if (_isPlacesPanelVisible)
+                    if (_isPlacesPanelVisible)
+                    {
+                        // Afficher l'overlay et le panneau
+                        DarkOverlay.IsVisible = true;
+                        await Task.WhenAll(
+                            DarkOverlay.FadeTo(0.3, 300),
+                            PlacesPanel.TranslateTo(0, 0, 400, Easing.CubicOut)
+                        );
+                        
+                        PlacesToggleButton.Text = "✕";
+                        await PlacesToggleButtonFrame.ScaleTo(1.1, 100);
+                        await PlacesToggleButtonFrame.ScaleTo(1, 100);
+                    }
+                    else
+                    {
+                        // Fermer avec style
+                        await Task.WhenAll(
+                            DarkOverlay.FadeTo(0, 300),
+                            PlacesPanel.TranslateTo(-340, 0, 400, Easing.CubicIn)
+                        );
+                        DarkOverlay.IsVisible = false;
+                        
+                        PlacesToggleButton.Text = "📍";
+                        await PlacesToggleButtonFrame.RotateTo(-360, 300);
+                        PlacesToggleButtonFrame.Rotation = 0;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur animation places: {ex.Message}");
+            }
+        }
+
+        private async void OnClosePlacesPanel(object? sender, EventArgs e)
+        {
+            try
+            {
+                // ✅ CORRECTION: S'assurer qu'on est sur le main thread
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    // Afficher l'overlay et le panneau
-                    DarkOverlay.IsVisible = true;
-                    await Task.WhenAll(
-                        DarkOverlay.FadeTo(0.3, 300),
-                        PlacesPanel.TranslateTo(0, 0, 400, Easing.CubicOut)
-                    );
+                    _isPlacesPanelVisible = false;
                     
-                    PlacesToggleButton.Text = "✕";
-                    await PlacesToggleButtonFrame.ScaleTo(1.1, 100);
-                    await PlacesToggleButtonFrame.ScaleTo(1, 100);
-                }
-                else
-                {
-                    // Fermer avec style
                     await Task.WhenAll(
                         DarkOverlay.FadeTo(0, 300),
                         PlacesPanel.TranslateTo(-340, 0, 400, Easing.CubicIn)
@@ -164,33 +213,11 @@ namespace MyApp
                     PlacesToggleButton.Text = "📍";
                     await PlacesToggleButtonFrame.RotateTo(-360, 300);
                     PlacesToggleButtonFrame.Rotation = 0;
-                }
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur animation places: {ex.Message}");
-            }
-        }
-
-        private async void OnClosePlacesPanel(object? sender, EventArgs e)
-        {
-            try
-            {
-                _isPlacesPanelVisible = false;
-                
-                await Task.WhenAll(
-                    DarkOverlay.FadeTo(0, 300),
-                    PlacesPanel.TranslateTo(-340, 0, 400, Easing.CubicIn)
-                );
-                DarkOverlay.IsVisible = false;
-                
-                PlacesToggleButton.Text = "📍";
-                await PlacesToggleButtonFrame.RotateTo(-360, 300);
-                PlacesToggleButtonFrame.Rotation = 0;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Erreur fermeture places: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur fermeture places: {ex.Message}");
             }
         }
 

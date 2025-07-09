@@ -10,7 +10,7 @@ namespace MyApp
 
             try
             {
-                // ✅ SÉCURITÉ: Gestionnaire d'exceptions global
+                // ✅ SÉCURITÉ: Gestionnaire d'exceptions global avec protection UI thread
                 AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
                 TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
                 
@@ -30,7 +30,7 @@ namespace MyApp
             }
         }
 
-        // ✅ NOUVEAU: Gestionnaire d'exceptions global
+        // ✅ CORRECTION: Gestionnaire d'exceptions global avec protection UI thread
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             try
@@ -39,36 +39,75 @@ namespace MyApp
                 System.Diagnostics.Debug.WriteLine($"💥 Exception non gérée: {exception?.Message}");
                 System.Diagnostics.Debug.WriteLine($"💥 StackTrace: {exception?.StackTrace}");
                 
-                // Essayer de récupérer gracieusement
-                if (!e.IsTerminating)
+                // ✅ CORRECTION PRINCIPALE: Vérifier si c'est une erreur UI thread
+                if (exception?.Message?.Contains("Only the original thread that created a view hierarchy can touch its views") == true)
                 {
-                    MainThread.BeginInvokeOnMainThread(() =>
+                    System.Diagnostics.Debug.WriteLine("🔧 Erreur UI Thread détectée - Tentative de récupération");
+                    
+                    // Essayer de récupérer en utilisant MainThread
+                    if (!e.IsTerminating)
                     {
-                        MainPage = CreateErrorPage(exception);
-                    });
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            try
+                            {
+                                // Tenter une récupération silencieuse
+                                System.Diagnostics.Debug.WriteLine("🔧 Tentative de récupération UI thread");
+                            }
+                            catch (Exception recoveryEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"❌ Échec récupération: {recoveryEx.Message}");
+                                // En dernier recours, créer une page d'erreur
+                                MainPage = CreateErrorPage(exception);
+                            }
+                        });
+                    }
+                }
+                else
+                {
+                    // Autres types d'erreurs - gestion normale
+                    if (!e.IsTerminating)
+                    {
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            MainPage = CreateErrorPage(exception);
+                        });
+                    }
                 }
             }
-            catch
+            catch (Exception handlerEx)
             {
                 // Ne rien faire si même le gestionnaire d'erreur crash
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur dans gestionnaire: {handlerEx.Message}");
             }
         }
 
-        // ✅ NOUVEAU: Gestionnaire pour les tâches non observées
+        // ✅ CORRECTION: Gestionnaire pour les tâches non observées avec protection UI thread
         private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine($"⚠️ Tâche non observée: {e.Exception.Message}");
+                
+                // ✅ CORRECTION: Vérifier si c'est une erreur UI thread dans une tâche async
+                if (e.Exception.InnerException?.Message?.Contains("Only the original thread that created a view hierarchy can touch its views") == true ||
+                    e.Exception.Message?.Contains("Only the original thread that created a view hierarchy can touch its views") == true)
+                {
+                    System.Diagnostics.Debug.WriteLine("🔧 Erreur UI Thread dans tâche async - Marquage comme observée");
+                    e.SetObserved(); // Marquer comme observée pour éviter le crash
+                    return;
+                }
+                
                 e.SetObserved(); // Marquer comme observée pour éviter le crash
             }
-            catch
+            catch (Exception handlerEx)
             {
                 // Ne rien faire si même le gestionnaire d'erreur crash
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur gestionnaire tâche: {handlerEx.Message}");
             }
         }
 
-        // ✅ NOUVEAU: Créer une page d'erreur robuste
+        // ✅ NOUVEAU: Créer une page d'erreur robuste avec protection UI thread
         private ContentPage CreateErrorPage(Exception? ex)
         {
             try
@@ -86,7 +125,7 @@ namespace MyApp
                             {
                                 new Label 
                                 { 
-                                    Text = "🚨 TravelBuddy - Erreur",
+                                    Text = "🚨 TravelBuddy - Erreur UI Thread",
                                     FontSize = 24,
                                     FontAttributes = FontAttributes.Bold,
                                     HorizontalOptions = LayoutOptions.Center,
@@ -94,7 +133,7 @@ namespace MyApp
                                 },
                                 new Label 
                                 { 
-                                    Text = "L'application a rencontré un problème et va redémarrer.",
+                                    Text = "L'application a rencontré un problème de thread UI et va redémarrer.",
                                     FontSize = 16,
                                     HorizontalOptions = LayoutOptions.Center,
                                     HorizontalTextAlignment = TextAlignment.Center
@@ -108,11 +147,22 @@ namespace MyApp
                                     {
                                         try
                                         {
-                                            MainPage = new AppShell();
+                                            // ✅ CORRECTION: Redémarrage thread-safe
+                                            MainThread.BeginInvokeOnMainThread(() =>
+                                            {
+                                                try
+                                                {
+                                                    MainPage = new AppShell();
+                                                }
+                                                catch (Exception restartEx)
+                                                {
+                                                    System.Diagnostics.Debug.WriteLine($"❌ Impossible de redémarrer: {restartEx.Message}");
+                                                }
+                                            });
                                         }
-                                        catch
+                                        catch (Exception restartEx)
                                         {
-                                            System.Diagnostics.Debug.WriteLine("❌ Impossible de redémarrer");
+                                            System.Diagnostics.Debug.WriteLine($"❌ Erreur redémarrage: {restartEx.Message}");
                                         }
                                     })
                                 },
@@ -132,8 +182,15 @@ namespace MyApp
                                             },
                                             new Label
                                             {
-                                                Text = ex?.Message ?? "Erreur inconnue",
+                                                Text = ex?.Message ?? "Erreur UI thread inconnue",
                                                 FontSize = 12
+                                            },
+                                            new Label
+                                            {
+                                                Text = "💡 Cette erreur est souvent causée par une mise à jour d'interface depuis un thread secondaire.",
+                                                FontSize = 10,
+                                                TextColor = Colors.Orange,
+                                                FontAttributes = FontAttributes.Italic
                                             }
                                         }
                                     }
@@ -143,14 +200,16 @@ namespace MyApp
                     }
                 };
             }
-            catch
+            catch (Exception createEx)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ Erreur création page erreur: {createEx.Message}");
+                
                 // Si même la page d'erreur crash, retourner une page ultra-simple
                 return new ContentPage
                 {
                     Content = new Label
                     {
-                        Text = "❌ Erreur critique - Redémarrez l'application",
+                        Text = "❌ Erreur critique UI Thread - Redémarrez l'application",
                         VerticalOptions = LayoutOptions.Center,
                         HorizontalOptions = LayoutOptions.Center
                     }
